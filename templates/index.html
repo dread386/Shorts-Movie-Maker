@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shorts Movie Maker — 長尺動画から縦型ショート動画を自動生成</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="logo-icon">🎬</span>
+        <div class="logo-text">
+          <h1>Shorts Movie Maker</h1>
+          <p class="subtitle">AI ハイライト検出 × 縦型自動クロップ × テロップ字幕生成</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-ai">Gemini AI / Whisper</span>
+        <span class="badge badge-local">Local Fast Engine</span>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Step 1: Upload -->
+      <section class="card upload-card" id="stepUpload">
+        <div class="card-header">
+          <span class="step-num">1</span>
+          <h2>動画をアップロード</h2>
+        </div>
+        <div class="upload-dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept="video/mp4,video/quicktime,video/x-matroska,video/webm" hidden>
+          <div class="dropzone-content">
+            <div class="upload-icon-circle">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <p class="drop-title">動画ファイルをドラッグ＆ドロップ</p>
+            <p class="drop-desc">または <button type="button" class="btn-text" id="browseBtn">ファイルを選択</button></p>
+            <p class="drop-hint">対応: MP4, MOV, MKV, WebM</p>
+          </div>
+        </div>
+
+        <!-- Video Info (Hidden until selected) -->
+        <div class="video-preview-bar hidden" id="videoInfoBar">
+          <div class="file-meta">
+            <span class="file-icon">📹</span>
+            <div class="file-details">
+              <p class="file-name" id="displayFilename">video.mp4</p>
+              <p class="file-specs" id="displaySpecs">00:00 | 1920x1080 | 30fps</p>
+            </div>
+          </div>
+          <button type="button" class="btn-cancel" id="removeFileBtn">✕ 変更</button>
+        </div>
+      </section>
+
+      <!-- Step 2: Settings -->
+      <section class="card settings-card" id="stepSettings">
+        <div class="card-header">
+          <span class="step-num">2</span>
+          <h2>生成設定</h2>
+        </div>
+
+        <div class="settings-grid">
+          <!-- Gemini API Key -->
+          <div class="form-group full-width">
+            <label for="geminiApiKey">
+              Gemini API キー <span class="tag-optional">(空欄時は「APIキーリスト.txt」の3つのキーを自動ローテーション使用)</span>
+            </label>
+            <input type="password" id="geminiApiKey" placeholder="個別のAPIキーを指定したい場合のみ入力（通常は空欄でOKです）">
+          </div>
+
+          <!-- Video Topic Hint -->
+          <div class="form-group full-width">
+            <label for="customTopic">
+              動画のテーマ / 補足情報 <span class="tag-optional">(任意: AIのハイライト精度が向上します)</span>
+            </label>
+            <input type="text" id="customTopic" placeholder="例: Weezer Buddy Holly ギター演奏 / ギターソロ / ゲーム実況の山場">
+          </div>
+
+          <!-- Crop Mode -->
+          <div class="form-group">
+            <label for="cropMode">縦型クロップ方式 (9:16)</label>
+            <select id="cropMode">
+              <option value="blur_pad" selected>背景ぼかしパディング (手元・全体が見切れない / ギター推奨)</option>
+              <option value="center_crop">中央固定クロップ (一般的な人物トーク向け)</option>
+              <option value="left_crop">左手・指板フォーカス (ギター運指アップ)</option>
+              <option value="right_crop">右手・ピッキングフォーカス</option>
+              <option value="fit_letterbox">上下黒帯 (レターボックス)</option>
+            </select>
+          </div>
+
+          <!-- Target Duration -->
+          <div class="form-group">
+            <label for="targetDuration">1本のショート動画の長さ</label>
+            <select id="targetDuration">
+              <option value="10">10秒 (瞬間ハイライト・超高速テンポ)</option>
+              <option value="15" selected>15秒 (推奨・平均視聴時間に最適化)</option>
+              <option value="20">20秒 (サビ・見どころたっぷり)</option>
+              <option value="30">30秒 (長め・トークやソロ)</option>
+            </select>
+          </div>
+
+          <!-- Max Clips -->
+          <div class="form-group">
+            <label for="maxClips">生成するショート動画数</label>
+            <select id="maxClips">
+              <option value="2">2 クリップ</option>
+              <option value="3">3 クリップ</option>
+              <option value="4" selected>4 クリップ (推奨)</option>
+              <option value="5">5 クリップ</option>
+              <option value="6">6 クリップ</option>
+            </select>
+          </div>
+
+          <!-- Whisper Model -->
+          <div class="form-group">
+            <label for="whisperModel">文字起こし精度 (Whisper)</label>
+            <select id="whisperModel">
+              <option value="base" selected>base (高速・軽量・キャッシュ済)</option>
+              <option value="small">small (バランス・キャッシュ済)</option>
+              <option value="medium">medium (高精度・キャッシュ済)</option>
+            </select>
+          </div>
+
+          <!-- Language -->
+          <div class="form-group">
+            <label for="language">音声言語</label>
+            <select id="language">
+              <option value="ja" selected>日本語 (Japanese)</option>
+              <option value="en">英語 (English)</option>
+            </select>
+          </div>
+
+          <!-- Subtitle Toggle -->
+          <div class="form-group">
+            <label>テロップ字幕の焼き込み</label>
+            <div class="toggle-wrap">
+              <label class="checkbox-label">
+                <input type="checkbox" id="showSubtitles" checked>
+                <span>音声の文字起こしテロップを表示する</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Header Banner Toggle -->
+          <div class="form-group">
+            <label>上部バナー (見出しフック)</label>
+            <div class="toggle-wrap">
+              <label class="checkbox-label">
+                <input type="checkbox" id="showHeaderBanner" checked>
+                <span>上部にタイトルバナーを表示する</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Custom Banner Text -->
+          <div class="form-group full-width">
+            <label for="customBannerText">
+              上部バナーの固定テキスト <span class="tag-optional">(任意: 空欄の場合はAIが自動命名)</span>
+            </label>
+            <input type="text" id="customBannerText" placeholder="例: 激ムズギターソロ弾いてみた / 今日のハイライト">
+          </div>
+
+          <!-- Subtitle Font -->
+          <div class="form-group">
+            <label for="fontKey">字幕フォント</label>
+            <select id="fontKey">
+              {% for key, val in fonts.items() %}
+              <option value="{{ key }}">{{ val.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Display Mode -->
+          <div class="form-group">
+            <label for="displayMode">テロップ表示行数</label>
+            <select id="displayMode">
+              <option value="1_line" selected>1行テンポ重視 (おすすめ)</option>
+              <option value="2_lines">2行表示</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Start Action Button -->
+        <div class="action-area">
+          <button type="button" class="btn-primary" id="startBtn" disabled>
+            <span class="btn-icon">🚀</span>
+            <span class="btn-text-main">ショート動画を自動生成</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 3: Progress & Output -->
+      <section class="card progress-card hidden" id="stepProgress">
+        <div class="card-header">
+          <span class="step-num">3</span>
+          <h2>処理ステータス</h2>
+        </div>
+
+        <div class="progress-container">
+          <div class="progress-info">
+            <span class="progress-phase" id="progressPhase">準備中...</span>
+            <span class="progress-percent" id="progressPercent">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <!-- Result Clips Area -->
+        <div class="results-area hidden" id="resultsArea">
+          <div class="results-header">
+            <h3>🎉 生成完了ショート動画一覧</h3>
+            <a href="#" class="btn-zip-download" id="zipDownloadBtn">
+              <span>📦</span> すべて一括ダウンロード (ZIP)
+            </a>
+          </div>
+
+          <div class="clips-grid" id="clipsGrid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Subtitle Editor Modal -->
+    <div class="modal-overlay hidden" id="subEditorModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-area">
+            <span class="modal-icon">✏️</span>
+            <h3 id="modalClipTitle">字幕（テロップ）編集</h3>
+          </div>
+          <button type="button" class="btn-modal-close" id="closeModalBtn">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="modal-hint">誤字や聞き間違いを修正してください。「動画に再反映」を押すと数秒で字幕が再焼き込みされます。</p>
+          
+          <div class="timeline-rows-container" id="timelineRowsContainer">
+            <!-- Dynamically populated rows -->
+          </div>
+
+          <div class="modal-actions-bar">
+            <button type="button" class="btn-secondary" id="addRowBtn">＋ 行を追加</button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" id="cancelModalBtn">キャンセル</button>
+          <button type="button" class="btn-primary" id="saveAndRerenderBtn">
+            <span id="reRenderBtnText">🔄 修正して動画に再反映 (即時)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <p>Shorts Movie Maker — 完全ローカル動画編集 & AI ハイライトクリッパー</p>
+    </footer>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
