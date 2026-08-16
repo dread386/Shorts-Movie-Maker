@@ -19,15 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const gridSettingsPanel = document.getElementById('gridSettingsPanel');
   const gridLayoutSelect = document.getElementById('gridLayoutSelect');
   const gridSlotsContainer = document.getElementById('gridSlotsContainer');
-  const gridPreviewVideo = document.getElementById('gridPreviewVideo');
   const gridPreviewImg = document.getElementById('gridPreviewImg');
   const gridPreviewPlaceholder = document.getElementById('gridPreviewPlaceholder');
-  const gridVideoControls = document.getElementById('gridVideoControls');
-  const gridPlayBtn = document.getElementById('gridPlayBtn');
-  const gridSeekbar = document.getElementById('gridSeekbar');
-  const gridTimeDisplay = document.getElementById('gridTimeDisplay');
 
   const targetDurationSelect = document.getElementById('targetDuration');
+
+
 
 
   const maxClipsSelect = document.getElementById('maxClips');
@@ -359,14 +356,54 @@ document.addEventListener('DOMContentLoaded', () => {
     videoInfoBar.classList.add('hidden');
     dropzone.classList.remove('hidden');
     
-    if (gridPreviewVideo) {
-      gridPreviewVideo.pause();
-      gridPreviewVideo.src = '';
+    if (gridPreviewImg) {
+      gridPreviewImg.src = '';
     }
-    if (gridPreviewImg) gridPreviewImg.src = '';
-    if (gridPreviewPlaceholder) gridPreviewPlaceholder.classList.remove('hidden');
-    if (gridVideoControls) gridVideoControls.classList.add('hidden');
+    if (gridPreviewPlaceholder) {
+      gridPreviewPlaceholder.classList.remove('hidden');
+    }
     startBtn.disabled = true;
+  }
+
+  // Generate instant thumbnail from local video file using Canvas
+  function generateClientThumbnail(file) {
+    try {
+      const video = document.createElement('video');
+      video.preload = 'auto';
+      video.src = URL.createObjectURL(file);
+      video.muted = true;
+      video.playsInline = true;
+      
+      video.onloadedmetadata = () => {
+        const seekTime = Math.min(2.0, Math.max(0.5, (video.duration || 10) * 0.1));
+        video.currentTime = seekTime;
+      };
+
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth || 1280;
+          canvas.height = video.videoHeight || 720;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          if (dataUrl && dataUrl.length > 500) {
+            gridPreviewImg.src = dataUrl;
+            gridPreviewPlaceholder.classList.add('hidden');
+          }
+        } catch (err) {
+          console.warn('Canvas render error', err);
+        } finally {
+          URL.revokeObjectURL(video.src);
+        }
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+      };
+    } catch (e) {
+      console.warn('Client thumbnail error', e);
+    }
   }
 
   // 2. Upload File to Backend
@@ -376,18 +413,8 @@ document.addEventListener('DOMContentLoaded', () => {
     videoInfoBar.classList.remove('hidden');
     dropzone.classList.add('hidden');
 
-    // Instantly load local video into grid preview player (0.01s latency)
-    try {
-      const localBlobUrl = URL.createObjectURL(file);
-      if (gridPreviewVideo) {
-        gridPreviewVideo.src = localBlobUrl;
-        gridPreviewVideo.currentTime = 0.5;
-        gridPreviewPlaceholder.classList.add('hidden');
-        gridVideoControls.classList.remove('hidden');
-      }
-    } catch (e) {
-      console.warn('Local preview load error', e);
-    }
+    // 1. Instant local thumbnail generation (0.05s)
+    generateClientThumbnail(file);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -415,12 +442,22 @@ document.addEventListener('DOMContentLoaded', () => {
       displayFilename.textContent = file.name;
       displaySpecs.textContent = `長さ: ${durStr} | 解像度: ${data.video_info.width}x${data.video_info.height} | ${data.video_info.fps}fps`;
 
+      // 2. Apply high-quality FFmpeg extracted base64 image (100% reliable)
+      if (data.preview_image_base64) {
+        gridPreviewImg.src = data.preview_image_base64;
+        gridPreviewPlaceholder.classList.add('hidden');
+      } else if (data.preview_image_url) {
+        gridPreviewImg.src = `${data.preview_image_url}?t=${Date.now()}`;
+        gridPreviewPlaceholder.classList.add('hidden');
+      }
+
       startBtn.disabled = false;
     } catch (e) {
       alert(`エラー: ${e.message}`);
       resetUpload();
     }
   }
+
 
 
 

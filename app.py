@@ -13,8 +13,11 @@ import time
 import json
 import zipfile
 import threading
+import base64
+import subprocess
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from werkzeug.utils import secure_filename
+
 
 from core.audio_extractor import get_video_info, extract_audio
 from core.whisper_sync import transcribe_full_audio
@@ -88,22 +91,40 @@ def upload_file():
     except Exception as e:
         info = {'duration': 60.0, 'width': 1920, 'height': 1080, 'fps': 30.0}
 
-    # Extract representative preview frame at 1.0s
+    # Extract representative preview frame (1.5s or 10% of duration)
     preview_filename = f"preview_{job_id}.jpg"
     preview_path = os.path.join(UPLOAD_DIR, preview_filename)
+    preview_base64 = ""
     preview_url = ""
+    
+    seek_time = min(2.0, max(0.5, info.get('duration', 10.0) * 0.1))
     try:
         cmd = [
             'ffmpeg', '-y',
-            '-ss', '1.0',
+            '-ss', f"{seek_time:.2f}",
             '-i', video_path,
             '-vframes', '1',
             '-s', '1280x720',
-            '-q:v', '3',
+            '-q:v', '2',
             preview_path
         ]
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        if os.path.exists(preview_path):
+        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        if res.returncode != 0 or not os.path.exists(preview_path) or os.path.getsize(preview_path) == 0:
+            # Fallback to start 0.0s
+            cmd_fallback = [
+                'ffmpeg', '-y',
+                '-i', video_path,
+                '-vframes', '1',
+                '-s', '1280x720',
+                '-q:v', '2',
+                preview_path
+            ]
+            subprocess.run(cmd_fallback, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        if os.path.exists(preview_path) and os.path.getsize(preview_path) > 100:
+            with open(preview_path, 'rb') as img_f:
+                b64_data = base64.b64encode(img_f.read()).decode('utf-8')
+                preview_base64 = f"data:image/jpeg;base64,{b64_data}"
             preview_url = f"/api/preview/{job_id}"
     except Exception as e:
         print(f"[Preview Extract Error] {e}")
@@ -112,8 +133,10 @@ def upload_file():
         'job_id': job_id,
         'filename': saved_filename,
         'preview_image_url': preview_url,
+        'preview_image_base64': preview_base64,
         'video_info': info
     })
+
 
 
 
