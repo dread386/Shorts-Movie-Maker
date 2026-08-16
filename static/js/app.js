@@ -316,40 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUpload();
   });
 
-  // Grid Video Playback & Seek Controls
-  if (gridPlayBtn && gridPreviewVideo) {
-    gridPlayBtn.addEventListener('click', () => {
-      if (gridPreviewVideo.paused) {
-        gridPreviewVideo.play();
-        gridPlayBtn.textContent = '⏸ 一時停止';
-      } else {
-        gridPreviewVideo.pause();
-        gridPlayBtn.textContent = '▶ 再生';
-      }
-    });
-
-    gridPreviewVideo.addEventListener('timeupdate', () => {
-      if (!isNaN(gridPreviewVideo.duration) && gridPreviewVideo.duration > 0) {
-        const pct = (gridPreviewVideo.currentTime / gridPreviewVideo.duration) * 100;
-        gridSeekbar.value = pct;
-
-        const curM = Math.floor(gridPreviewVideo.currentTime / 60);
-        const curS = Math.floor(gridPreviewVideo.currentTime % 60);
-        const durM = Math.floor(gridPreviewVideo.duration / 60);
-        const durS = Math.floor(gridPreviewVideo.duration % 60);
-        gridTimeDisplay.textContent = `${String(curM).padStart(2, '0')}:${String(curS).padStart(2, '0')} / ${String(durM).padStart(2, '0')}:${String(durS).padStart(2, '0')}`;
-      }
-    });
-
-    gridSeekbar.addEventListener('input', () => {
-      if (!isNaN(gridPreviewVideo.duration) && gridPreviewVideo.duration > 0) {
-        const time = (parseFloat(gridSeekbar.value) / 100) * gridPreviewVideo.duration;
-        gridPreviewVideo.currentTime = time;
-      }
-    });
-  }
-
   function resetUpload() {
+
     currentJobId = null;
     currentFilename = null;
     fileInput.value = '';
