@@ -57,6 +57,26 @@ def get_tts_status():
     return jsonify(get_available_tts_models())
 
 
+@app.route('/api/tts_preview', methods=['POST'])
+def tts_preview():
+    data = request.json or {}
+    text = data.get('text', 'ショート動画を自動生成します').strip() or 'ショート動画を自動生成します'
+    tts_engine = data.get('tts_engine', 'edge_tts')
+    tts_model = data.get('tts_model', 'ja-JP-KeitaNeural')
+
+    preview_wav = os.path.join(UPLOAD_DIR, 'tts_preview_sample.wav')
+    try:
+        generate_voiceover(text, preview_wav, tts_engine=tts_engine, tts_model=tts_model)
+        if os.path.exists(preview_wav) and os.path.getsize(preview_wav) > 100:
+            with open(preview_wav, 'rb') as f:
+                b64 = base64.b64encode(f.read()).decode('utf-8')
+            return jsonify({'audio_base64': f"data:audio/wav;base64,{b64}"})
+        return jsonify({'error': '音声の合成に失敗しました'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
 
 @app.route('/api/preview/<job_id>')
 def serve_preview(job_id):

@@ -7,8 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=1.2.5">
+  <link rel="stylesheet" href="/static/css/style.css?v=1.2.6">
 </head>
+
 
 
 
@@ -193,9 +194,12 @@
 
           <!-- TTS Voiceover Setting -->
           <div class="form-group">
-            <label for="ttsEngine">
-              🎙️ 冒頭タイトル読み上げ (音声フック)
-            </label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label for="ttsEngine" style="margin-bottom: 0;">
+                🎙️ 冒頭タイトル読み上げ (音声フック)
+              </label>
+              <button type="button" class="btn-preset" id="previewVoiceBtn" style="padding: 3px 8px; font-size: 0.75rem;">🔊 声を試聴</button>
+            </div>
             <select id="ttsEngine">
               <optgroup label="Style-BERT-VITS2 (ローカルAI音声)">
                 {% for m in tts_info.sbv2_models %}
@@ -204,12 +208,13 @@
               </optgroup>
               <optgroup label="edge-tts (高品質クラウド音声・確実高速)">
                 {% for key, val in tts_info.edge_voices.items() %}
-                <option value="edge_tts:{{ key }}">{{ val }}</option>
+                <option value="edge_tts:{{ key }}" {% if key == 'ja-JP-KeitaNeural' %}selected{% endif %}>{{ val }}</option>
                 {% endfor %}
               </optgroup>
               <option value="off">なし (音声を重ねない)</option>
             </select>
           </div>
+
 
           <!-- Banner Font Size -->
           <div class="form-group">
@@ -362,8 +367,12 @@
                 </select>
               </div>
               <div>
-                <label class="modal-section-label" for="modalTtsEngine" style="font-size: 0.82rem;">🎙️ ナレーション音声（声）</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label class="modal-section-label" for="modalTtsEngine" style="font-size: 0.82rem; margin-bottom: 0;">🎙️ ナレーション音声（声）</label>
+                  <button type="button" class="btn-preset" id="modalPreviewVoiceBtn" style="padding: 2px 6px; font-size: 0.72rem;">🔊 試聴</button>
+                </div>
                 <select id="modalTtsEngine" class="modal-select">
+
                   <optgroup label="Style-BERT-VITS2 (ローカルAI音声)">
                     {% for m in tts_info.sbv2_models %}
                     <option value="sbv2:{{ m }}">Style-BERT-VITS2 ({{ m }})</option>
@@ -413,9 +422,10 @@
     </footer>
   </div>
 
-  <script src="/static/js/app.js?v=1.2.5"></script>
+  <script src="/static/js/app.js?v=1.2.6"></script>
 </body>
 </html>
+
 
 
 

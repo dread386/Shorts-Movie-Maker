@@ -14,14 +14,15 @@ import subprocess
 import requests
 
 SBV2_DIR = "/Volumes/DTM/applications/Style-BERT-VITS2"
-SBV2_PORTS = [5000, 5001, 7860, 8000]
+# Port 5000 is occupied by macOS AirPlay, so prioritize 5001, 7860, 8000
+SBV2_PORTS = [5001, 7860, 8000, 5002]
 
 EDGE_TTS_VOICES = {
-    'ja-JP-NanamiNeural': 'Nanami (女性・自然で聴きやすい)',
-    'ja-JP-KeitaNeural':  'Keita (男性・親しみやすい)',
+    'ja-JP-KeitaNeural':  'Keita (男性・親しみやすい・自然)',
     'ja-JP-NaokiNeural':  'Naoki (男性・落ち着いたアナウンス)',
-    'ja-JP-AoiNeural':    'Aoi (女性・明るいトーン)',
-    'ja-JP-DaichiNeural': 'Daichi (男性・力強い)'
+    'ja-JP-DaichiNeural': 'Daichi (男性・力強い)',
+    'ja-JP-NanamiNeural': 'Nanami (女性・明るく聴きやすい)',
+    'ja-JP-AoiNeural':    'Aoi (女性・アニメ調・高音)'
 }
 
 # Mapping SBV2 models to appropriate fallback voices
@@ -29,15 +30,19 @@ MALE_SBV2_MODELS = {'my_voice', 'jvnv-M1-jp', 'Ueda_Kanpei', 'Tobu_Yunomaru', 'S
 
 
 def check_sbv2_status() -> dict:
-    """Check if Style-BERT-VITS2 API server is running"""
+    """Check if Style-BERT-VITS2 API server is running with strict JSON validation"""
     for port in SBV2_PORTS:
         try:
             r = requests.get(f"http://127.0.0.1:{port}/models/info", timeout=0.3)
-            if r.status_code == 200:
-                return {'online': True, 'port': port, 'models': r.json()}
+            # Require application/json to prevent macOS AirPlay port 5000 binary response
+            if r.status_code == 200 and 'application/json' in r.headers.get('content-type', '').lower():
+                data = r.json()
+                if isinstance(data, dict):
+                    return {'online': True, 'port': port, 'models': data}
         except Exception:
             pass
     return {'online': False, 'port': None, 'models': []}
+
 
 
 def get_available_tts_models() -> dict:

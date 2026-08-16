@@ -37,9 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const customBannerTextInput = document.getElementById('customBannerText');
   const fontKeySelect = document.getElementById('fontKey');
   const displayModeSelect = document.getElementById('displayMode');
-  const sbv2Badge = document.getElementById('sbv2Badge');
+  const previewVoiceBtn = document.getElementById('previewVoiceBtn');
+  const modalPreviewVoiceBtn = document.getElementById('modalPreviewVoiceBtn');
 
   const startBtn = document.getElementById('startBtn');
+
   const stepProgress = document.getElementById('stepProgress');
   const progressPhase = document.getElementById('progressPhase');
   const progressPercent = document.getElementById('progressPercent');
@@ -441,6 +443,67 @@ document.addEventListener('DOMContentLoaded', () => {
       ttsEnabled: true
     };
   }
+
+  // Voice Preview synthesis & playback
+  async function previewVoice(selectVal, btnElem) {
+    const { ttsEngine, ttsModel } = parseTtsValue(selectVal);
+    if (ttsEngine === 'off') {
+      alert('「なし」が選択されているため、音声は生成されません。');
+      return;
+    }
+    const origText = btnElem.textContent;
+    btnElem.textContent = '⏳ 合成中...';
+    btnElem.disabled = true;
+
+    try {
+      const resp = await fetch('/api/tts_preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tts_engine: ttsEngine,
+          tts_model: ttsModel,
+          text: 'ショート動画を自動生成します'
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || '合成エラー');
+      }
+
+      const data = await resp.json();
+      if (data.audio_base64) {
+        const audio = new Audio(data.audio_base64);
+        btnElem.textContent = '🔊 再生中...';
+        audio.onended = () => {
+          btnElem.textContent = origText;
+          btnElem.disabled = false;
+        };
+        audio.onerror = () => {
+          btnElem.textContent = origText;
+          btnElem.disabled = false;
+        };
+        await audio.play();
+      }
+    } catch (e) {
+      alert(`試聴エラー: ${e.message}`);
+      btnElem.textContent = origText;
+      btnElem.disabled = false;
+    }
+  }
+
+  if (previewVoiceBtn) {
+    previewVoiceBtn.addEventListener('click', () => {
+      previewVoice(ttsEngineSelect.value, previewVoiceBtn);
+    });
+  }
+
+  if (modalPreviewVoiceBtn) {
+    modalPreviewVoiceBtn.addEventListener('click', () => {
+      previewVoice(modalTtsEngine.value, modalPreviewVoiceBtn);
+    });
+  }
+
 
   // 3. Start Processing
   startBtn.addEventListener('click', async () => {
