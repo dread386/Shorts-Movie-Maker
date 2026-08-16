@@ -1112,6 +1112,74 @@ input:focus, select:focus {
   border-color: #DC2626;
 }
 
+/* App Shutdown Button */
+.btn-app-shutdown {
+  background: rgba(220, 38, 38, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  color: #FEE2E2;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.btn-app-shutdown:hover {
+  background: #DC2626;
+  color: #FFF;
+  border-color: #EF4444;
+  box-shadow: 0 0 14px rgba(220, 38, 38, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Shutdown Screen Overlay */
+.shutdown-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 29, 0.95);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+}
+
+.shutdown-card {
+  background: #1E293B;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 40px 32px;
+  border-radius: var(--radius-lg);
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.shutdown-icon {
+  font-size: 3.5rem;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.shutdown-card h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #F8FAFC;
+  margin-bottom: 10px;
+}
+
+.shutdown-card p {
+  color: #94A3B8;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+
 
 
 

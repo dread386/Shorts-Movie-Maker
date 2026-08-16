@@ -16,8 +16,10 @@ import threading
 import base64
 import subprocess
 import shutil
+import signal
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from werkzeug.utils import secure_filename
+
 
 
 from core.audio_extractor import get_video_info, extract_audio
@@ -124,6 +126,22 @@ def clean_storage():
         'freed_bytes': freed,
         'freed_formatted': _format_bytes(freed)
     })
+
+
+@app.route('/api/shutdown', methods=['POST'])
+def shutdown_server():
+    """Shuts down Flask server and terminates terminal process safely"""
+    def _kill():
+        time.sleep(0.5)
+        # Send SIGTERM to current process
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    threading.Thread(target=_kill, daemon=True).start()
+    return jsonify({
+        'status': 'shutting_down',
+        'message': 'アプリケーションとターミナルプロセスを正常に終了しました。'
+    })
+
 
 
 

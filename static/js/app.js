@@ -42,8 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const storageCleanBtn = document.getElementById('storageCleanBtn');
   const storageSizeText = document.getElementById('storageSizeText');
   const storageCleanResultBtn = document.getElementById('storageCleanResultBtn');
+  const appShutdownBtn = document.getElementById('appShutdownBtn');
+  const shutdownOverlay = document.getElementById('shutdownOverlay');
 
   const startBtn = document.getElementById('startBtn');
+
 
 
   const stepProgress = document.getElementById('stepProgress');
@@ -193,6 +196,29 @@ document.addEventListener('DOMContentLoaded', () => {
   if (storageCleanResultBtn) {
     storageCleanResultBtn.addEventListener('click', handleCleanStorage);
   }
+
+  // App Shutdown Handler
+  if (appShutdownBtn) {
+    appShutdownBtn.addEventListener('click', async () => {
+      const ok = confirm("🛑 Shorts Movie Maker を終了してターミナルサーバーを停止しますか？");
+      if (!ok) return;
+
+      if (shutdownOverlay) {
+        shutdownOverlay.classList.remove('hidden');
+      }
+
+      try {
+        await fetch('/api/shutdown', { method: 'POST' });
+      } catch (e) {}
+
+      setTimeout(() => {
+        try {
+          window.close();
+        } catch (e) {}
+      }, 600);
+    });
+  }
+
 
 
   // Load saved API Key from localStorage
