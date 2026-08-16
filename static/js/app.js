@@ -58,23 +58,61 @@ document.addEventListener('DOMContentLoaded', () => {
   const reRenderBtnText = document.getElementById('reRenderBtnText');
 
   // Grid definitions
-  const GRID_CELLS = [
-    { key: 'A', label: 'A (左手上・ネック)' },
-    { key: 'B', label: 'B (中央左上)' },
-    { key: 'C', label: 'C (中央右上・顔)' },
-    { key: 'D', label: 'D (右上)' },
-    { key: 'E', label: 'E (左手下)' },
-    { key: 'F', label: 'F (ピッキング手元)' },
-    { key: 'G', label: 'G (ボディ/アンプ)' },
-    { key: 'H', label: 'H (右下)' },
-    { key: 'AB', label: 'A+B (左上ワイド)' },
-    { key: 'BC', label: 'B+C (中央上ワイド)' },
-    { key: 'CD', label: 'C+D (右上ワイド)' },
-    { key: 'EF', label: 'E+F (左下ワイド・手元)' },
-    { key: 'FG', label: 'F+G (中央下ワイド・ギター)' },
-    { key: 'GH', label: 'G+H (右下ワイド)' },
-    { key: 'FULL', label: 'FULL (16:9全体)' },
-    { key: 'CENTER', label: 'CENTER (中央フォーカス)' }
+  const GRID_GROUPS = [
+    {
+      group: '単一区画 (1/4幅 × 1/2高)',
+      cells: [
+        { key: 'A', label: 'A (左手上・ネック)' },
+        { key: 'B', label: 'B (中央左上)' },
+        { key: 'C', label: 'C (中央右上・顔)' },
+        { key: 'D', label: 'D (右上)' },
+        { key: 'E', label: 'E (左手下)' },
+        { key: 'F', label: 'F (ピッキング手元)' },
+        { key: 'G', label: 'G (ボディ/アンプ)' },
+        { key: 'H', label: 'H (右下)' }
+      ]
+    },
+    {
+      group: '横2区画ワイド (1/2幅)',
+      cells: [
+        { key: 'AB', label: 'A+B (上段 左1/2)' },
+        { key: 'BC', label: 'B+C (上段 中央1/2)' },
+        { key: 'CD', label: 'C+D (上段 右1/2)' },
+        { key: 'EF', label: 'E+F (下段 左1/2・手元)' },
+        { key: 'FG', label: 'F+G (下段 中央1/2・ギター)' },
+        { key: 'GH', label: 'G+H (下段 右1/2)' }
+      ]
+    },
+    {
+      group: '横3区画ワイド (3/4幅)',
+      cells: [
+        { key: 'ABC', label: 'A+B+C (上段 左3/4)' },
+        { key: 'BCD', label: 'B+C+D (上段 右3/4・A以外)' },
+        { key: 'EFG', label: 'E+F+G (下段 左3/4)' },
+        { key: 'FGH', label: 'F+G+H (下段 右3/4・E以外)' }
+      ]
+    },
+    {
+      group: '横全幅 (4/4幅)',
+      cells: [
+        { key: 'ABCD', label: 'A+B+C+D (上段 全幅4/4)' },
+        { key: 'EFGH', label: 'E+F+G+H (下段 全幅4/4)' }
+      ]
+    },
+    {
+      group: '縦長・ブロック',
+      cells: [
+        { key: 'AE', label: 'A+E (左端縦長)' },
+        { key: 'BF', label: 'B+F (中左縦長)' },
+        { key: 'CG', label: 'C+G (中右縦長)' },
+        { key: 'DH', label: 'D+H (右端縦長)' },
+        { key: 'ABEF', label: '左半分全体 (AB+EF)' },
+        { key: 'BCFG', label: '中央半分 (BC+FG)' },
+        { key: 'CDGH', label: '右半分全体 (CD+GH)' },
+        { key: 'FULL', label: 'FULL (16:9全体フル)' },
+        { key: 'CENTER', label: 'CENTER (中央フォーカス)' }
+      ]
+    }
   ];
 
   const LAYOUT_SLOT_COUNTS = {
@@ -140,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGridSlots(gridLayoutSelect.value);
   });
 
-  // Render Slots dynamically
+  // Render Slots dynamically with optgroups
   function renderGridSlots(layoutKey, presetValues = null) {
     const count = LAYOUT_SLOT_COUNTS[layoutKey] || 2;
     gridSlotsContainer.innerHTML = '';
@@ -162,12 +200,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         layoutKey === 'grid_2x2' ? (i === 0 ? '左上' : i === 1 ? '右上' : i === 2 ? '左下' : '右下') :
                         `スロット ${i + 1}`;
 
-      const selectedVal = defaultAssignments[i] || GRID_CELLS[i % GRID_CELLS.length].key;
+      const selectedVal = defaultAssignments[i] || 'A';
 
       let optionsHtml = '';
-      GRID_CELLS.forEach(c => {
-        const isSel = c.key === selectedVal ? 'selected' : '';
-        optionsHtml += `<option value="${c.key}" ${isSel}>${c.label}</option>`;
+      GRID_GROUPS.forEach(grp => {
+        optionsHtml += `<optgroup label="${grp.group}">`;
+        grp.cells.forEach(c => {
+          const isSel = c.key === selectedVal ? 'selected' : '';
+          optionsHtml += `<option value="${c.key}" ${isSel}>${c.label}</option>`;
+        });
+        optionsHtml += `</optgroup>`;
       });
 
       slotDiv.innerHTML = `
@@ -180,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
       gridSlotsContainer.appendChild(slotDiv);
     }
   }
+
 
   // Presets
   document.querySelectorAll('.btn-preset').forEach(btn => {
