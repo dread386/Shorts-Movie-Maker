@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shorts Movie Maker — 完全取扱説明書 (User Manual)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0B0F19;
+      --bg-card: #131B2E;
+      --bg-card-hover: #1E293B;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366F1;
+      --primary-light: #818CF8;
+      --accent-yellow: #FBBF24;
+      --accent-red: #EF4444;
+      --accent-green: #10B981;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.7;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .manual-header {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 36px;
+      border-radius: var(--radius);
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .manual-header::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 150px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.4), transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-badge {
+      display: inline-block;
+      background: var(--primary);
+      color: #FFF;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #FFF;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    /* Navigation / TOC */
+    .toc-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+
+    .toc-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent-yellow);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toc-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .toc-list a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+      display: block;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .toc-list a:hover {
+      color: var(--primary-light);
+      background: rgba(99, 102, 241, 0.1);
+      transform: translateX(4px);
+    }
+
+    /* Content Sections */
+    section {
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #FFF;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary-light);
+      margin: 24px 0 12px 0;
+    }
+
+    p {
+      color: #CBD5E1;
+      margin-bottom: 16px;
+      font-size: 0.96rem;
+    }
+
+    /* Feature Grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .feature-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: all 0.2s;
+    }
+
+    .feature-box:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+
+    .feature-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #FFF;
+      margin-bottom: 8px;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(99, 102, 241, 0.15);
+      color: #FFF;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #CBD5E1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Code Blocks / ASCII Art */
+    pre {
+      background: #090D16;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius);
+      padding: 18px;
+      color: #E2E8F0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      color: var(--accent-yellow);
+    }
+
+    /* Steps */
+    .step-card {
+      background: var(--bg-card);
+      border-left: 4px solid var(--primary);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 18px 24px;
+      margin-bottom: 16px;
+    }
+
+    .step-num {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--primary-light);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .step-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #FFF;
+      margin-bottom: 8px;
+    }
+
+    /* FAQ */
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .faq-q {
+      font-weight: 700;
+      color: #FFF;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .faq-a {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="manual-header">
+      <span class="header-badge">v1.3.1 Official Manual</span>
+      <h1>🎬 Shorts Movie Maker 完全取扱説明書</h1>
+      <p class="subtitle">長尺の横動画（16:9）から、AIが最適なハイライトを自動選定し、8区画マルチカメラ風分割・音声フック読み上げ・スマホ最適化極太バナー・9:16サムネイル付きショート動画を一括全自動生成するローカルツール。</p>
+    </header>
+
+    <!-- Table of Contents -->
+    <nav class="toc-card">
+      <div class="toc-title">📖 目次</div>
+      <ul class="toc-list">
+        <li><a href="#about">1. アプリ概要と従来作業との比較</a></li>
+        <li><a href="#architecture">2. 動作原理とシステム構成</a></li>
+        <li><a href="#grid-split">3-1. 8区画グリッド分割（A〜H）</a></li>
+        <li><a href="#ai-highlight">3-2. AI ハイライト自動選定</a></li>
+        <li><a href="#tts-voice">3-3. 音声フック読み上げ＆試聴</a></li>
+        <li><a href="#banner">3-4. スマホ最適化ワイドバナー</a></li>
+        <li><a href="#thumbnail">3-5. 9:16 高CTRサムネイル生成</a></li>
+        <li><a href="#editor">3-6. アプリ内 字幕＆バナーエディタ</a></li>
+        <li><a href="#storage">3-7. ストレージ容量解放機能</a></li>
+        <li><a href="#shutdown">3-8. アプリ停止＆ターミナル終了</a></li>
+        <li><a href="#workflow">4. 推奨ワークフロー手順</a></li>
+        <li><a href="#params">5. 設定パラメータ一覧</a></li>
+        <li><a href="#faq">6. よくある質問 (FAQ)</a></li>
+      </ul>
+    </nav>
+
+    <!-- Section 1: About -->
+    <section id="about">
+      <h2>1. アプリ概要と従来作業との比較</h2>
+      <p><strong>Shorts Movie Maker</strong> は、YouTube等に投稿された横動画から見どころを抽出し、スマートフォン視聴に最適化された縦型ショート動画（YouTube Shorts / TikTok / Instagram Reels）を完全自動で量産するためのデスクトップWebアプリケーションです。</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>従来の手作業 (Premiere/CapCut等)</th>
+              <th>Shorts Movie Maker</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>作業時間</strong></td>
+              <td>1本のショート作成に 30分〜1時間</td>
+              <td><strong>動画を入れてボタンを押すだけ (数分で複数本一括生成)</strong></td>
+            </tr>
+            <tr>
+              <td><strong>見どころ選定</strong></td>
+              <td>動画全体を目視でシークして探す</td>
+              <td><strong>Whisper文字起こし ＋ Gemini AI が自動検出</strong></td>
+            </tr>
+            <tr>
+              <td><strong>画面構成</strong></td>
+              <td>手動でクロップ・位置合わせ</td>
+              <td><strong>8区画グリッド（A〜H）からワンクリック配置</strong></td>
+            </tr>
+            <tr>
+              <td><strong>音声フック</strong></td>
+              <td>別ソフトで録音・書き出し・音量調整</td>
+              <td><strong>冒頭タイトル自動読み上げ ＋ 演奏音量を自動ダッキング</strong></td>
+            </tr>
+            <tr>
+              <td><strong>サムネイル</strong></td>
+              <td>Photoshop等で別枠作成</td>
+              <td><strong>1080x1920 高解像度 PNG サムネイルを同時自動生成</strong></td>
+            </tr>
+            <tr>
+              <td><strong>データ管理</strong></td>
+              <td>中間ファイルが散らかり容量を圧迫</td>
+              <td><strong>ワンクリックで一時ファイルを全削除して容量ゼロに復帰</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 2: Architecture -->
+    <section id="architecture">
+      <h2>2. 動作原理とシステム構成</h2>
+      <p>動画がアップロードされると、以下のパイプラインが高速かつ全自動で実行されます。</p>
+      <pre>
+[横動画 16:9 ファイル]
+       │
+       ▼
+[FFmpeg: 映像・音声抽出 & 0.05秒実写サムネイル生成]
+       │
+       ├────────────────────────────────────────┐
+       ▼                                        ▼
+[faster-whisper: 文字起こし & タイムスタンプ]   [8区画グリッド分割エンジン]
+       │                                        │
+       ▼                                        │
+[Gemini 1.5: ハイライトシーン & フック選定]    │
+       │                                        │
+       ├───────────────────┐                    │
+       ▼                   ▼                    │
+[縦型マルチスロット合成] [TTS音声合成 (ダッキング)]     │
+       │                   │                    │
+       └─────────┬─────────┘                    │
+                 ▼                              │
+    [字幕テロップ & ワイドバナー焼き込み]        │
+                 │                              │
+                 ▼                              ▼
+    [1080x1920 完成ショート動画 MP4]   [9:16 高解像度サムネイル PNG]
+                 │                              │
+                 └──────────────┬───────────────┘
+                                ▼
+              [📦 一括ZIPダウンロード & 容量解放]</pre>
+    </section>
+
+    <!-- Section 3: Features -->
+    <section id="features">
+      <h2>3. 主要機能の詳細解説</h2>
+
+      <div class="feature-grid">
+        <div class="feature-box" id="grid-split">
+          <span class="feature-icon">📐</span>
+          <div class="feature-title">8区画グリッド分割（A〜H）</div>
+          <p>横動画（16:9）を4×2（各480x540）に分割。実写サムネイル画像を見ながら、上下2分割・3分割・4画面タイル等に自由に配置可能。ギターの左手と右手手元を同時に魅せられます。</p>
+        </div>
+
+        <div class="feature-box" id="ai-highlight">
+          <span class="feature-icon">🤖</span>
+          <div class="feature-title">Gemini AI ハイライト選定</div>
+          <p>Whisper文字起こしテキストから、サビや見どころを自動検出。3キー自動ローテーション対応でレート制限時も安心。APIキー未設定時のルールベース抽出にも対応。</p>
+        </div>
+
+        <div class="feature-box" id="tts-voice">
+          <span class="feature-icon">🎙️</span>
+          <div class="feature-title">音声フック ＆ 🔊 声の試聴</div>
+          <p>Style-BERT-VITS2（ローカルAI）および edge-tts（クラウド音声）で冒頭タイトルを読み上げ。事前試聴ボタンで声を確認可能。音声中は演奏音量を自動ダッキング（30%に減衰）。</p>
+        </div>
+
+        <div class="feature-box" id="banner">
+          <span class="feature-icon">💡</span>
+          <div class="feature-title">スマホ最適化ワイドバナー</div>
+          <p>スマホ画面で一瞬で目を奪う幅980〜1020pxのワイド帯プレート。超特大（84px）・特大（76px）の極太フォントで圧倒的な視認性を確保します。</p>
+        </div>
+
+        <div class="feature-box" id="thumbnail">
+          <span class="feature-icon">🖼️</span>
+          <div class="feature-title">9:16 専用高CTRサムネイル</div>
+          <p>ベストフレームを自動抽出し、極太バナー＋テロップを合成した 1080x1920 高解像度 PNG サムネイルを動画とセットで自動生成します。</p>
+        </div>
+
+        <div class="feature-box" id="editor">
+          <span class="feature-icon">✏️</span>
+          <div class="feature-title">アプリ内 字幕＆バナーエディタ</div>
+          <p>生成後でもブラウザ上でテロップの誤字修正、バナー文の書き換え、声・フォントサイズの再選択が可能。「🔄 再反映」ボタンで即座に動画とサムネを再生成。</p>
+        </div>
+
+        <div class="feature-box" id="storage">
+          <span class="feature-icon">🧹</span>
+          <div class="feature-title">ストレージ容量解放機能</div>
+          <p>一時ファイルの消費容量をリアルタイム表示。ダウンロード完了後に「🗑️ 一時ファイルを全削除」を押すだけで、GB単位の不要データを瞬時に全消去。</p>
+        </div>
+
+        <div class="feature-box" id="shutdown">
+          <span class="feature-icon">🛑</span>
+          <div class="feature-title">アプリ停止＆ターミナル終了</div>
+          <p>画面右上の「🛑 アプリ停止」ボタンから、Pythonサーバープロセスを安全に完全終了させ、ブラウザウィンドウを閉じます。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Workflow -->
+    <section id="workflow">
+      <h2>4. 推奨ワークフロー手順</h2>
+
+      <div class="step-card">
+        <div class="step-num">Step 1</div>
+        <div class="step-title">動画の読み込み</div>
+        <p>横動画ファイルを画面中央の点線エリアにドラッグ＆ドロップします（0.05秒で実写グリッドサムネイルが表示されます）。</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">Step 2</div>
+        <div class="step-title">グリッド配置 ＆ 設定の確認</div>
+        <p>「縦動画の分割レイアウト」（例: 上下2分割）を選び、各スロットに配置したい区画（上: A左手 / 下: F右手）を選択します。</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">Step 3</div>
+        <div class="step-title">オプション設定 ＆ 声の試聴</div>
+        <p>目標尺（15秒推奨）、クリップ数（4本推奨）、読み上げ音声を選択し、<strong>[🔊 声を試聴]</strong> ボタンで音声を確認します。</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">Step 4</div>
+        <div class="step-title">一括生成の実行</div>
+        <p><strong>「🚀 ショート動画 ＆ サムネを一括生成」</strong> ボタンをクリックします。数分ですべての処理が完了します。</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">Step 5</div>
+        <div class="step-title">確認 ＆ ダウンロード ＆ 終了</div>
+        <p>プレビュー確認後、<strong>[📦 すべて一括ダウンロード (ZIP)]</strong> で保存。その後 <strong>[🗑️ 一時ファイルを全削除]</strong> で容量を解放し、右上の <strong>[🛑 アプリ停止]</strong> で安全に終了します。</p>
+      </div>
+    </section>
+
+    <!-- Section 5: Parameters -->
+    <section id="params">
+      <h2>5. 設定パラメータ一覧</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>パラメータ名</th>
+              <th>推奨設定 / デフォルト</th>
+              <th>機能と解説</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>クロップ方式</strong></td>
+              <td><code>8区画グリッド分割</code></td>
+              <td>16:9横動画を複数の注目エリアに分割して縦画面に合成。</td>
+            </tr>
+            <tr>
+              <td><strong>分割レイアウト</strong></td>
+              <td><code>上下2分割 (上/下)</code></td>
+              <td>ギターや楽器演奏では上段にネック、下段に手元を置くのが黄金比。</td>
+            </tr>
+            <tr>
+              <td><strong>1本の長さ</strong></td>
+              <td><code>15秒</code></td>
+              <td>ショート動画の平均視聴時間（スワイプされにくい最適尺）に合致。</td>
+            </tr>
+            <tr>
+              <td><strong>生成本数</strong></td>
+              <td><code>4 クリップ</code></td>
+              <td>2〜3分の元動画から最も盛り上がる4シーンを重複なく切り出し。</td>
+            </tr>
+            <tr>
+              <td><strong>音声フック</strong></td>
+              <td><code>Keita (男性)</code> または <code>Nanami (女性)</code></td>
+              <td>冒頭で視聴者の手を止めさせるナレーション音声。</td>
+            </tr>
+            <tr>
+              <td><strong>タイトル文字サイズ</strong></td>
+              <td><code>特大 (76px)</code> または <code>超特大 (84px)</code></td>
+              <td>スマホの小さな画面でも一瞬で読める極太サイズ。</td>
+            </tr>
+            <tr>
+              <td><strong>バナー配色</strong></td>
+              <td><code>黄帯 × 黒背景</code></td>
+              <td>最もクリック率（CTR）が高いとされるYouTube定番カラー。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 6: FAQ -->
+    <section id="faq">
+      <h2>6. よくある質問 (FAQ)</h2>
+
+      <div class="faq-item">
+        <div class="faq-q">❓ Style-BERT-VITS2 が「⚪ 未起動」と表示されますが使えますか？</div>
+        <div class="faq-a">はい、全く問題ありません。Style-BERT-VITS2 が起動していない場合は、自動的に高品質クラウド音声（edge-tts）が併用されます。自然な日本語ナレーションがそのまま生成されます。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">❓ 選択した声と違う声で生成されることはありますか？</div>
+        <div class="faq-a">いいえ。v1.2.6 にてmacOSのポート競合を解消し、生成前に <strong>[🔊 声を試聴]</strong> ボタンで聴いた通りの声で100%確実に生成されます。</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">❓ ディスク容量がたまってきたらどうすればいいですか？</div>
+        <div class="faq-a">ヘッダー右上の <strong>[🧹 一時ファイル: ○○ GB (全削除)]</strong> ボタンを押してください。ダウンロード済みのファイルには影響を与えず、安全に容量をゼロに戻せます。</div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>Shorts Movie Maker v1.3.1 — 完全ローカル動画編集 & AI ハイライトクリッパー</p>
+    </footer>
+  </div>
+</body>
+</html>
