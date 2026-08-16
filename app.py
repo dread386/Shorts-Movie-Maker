@@ -19,7 +19,7 @@ from werkzeug.utils import secure_filename
 from core.audio_extractor import get_video_info, extract_audio
 from core.whisper_sync import transcribe_full_audio
 from core.highlight_detector import detect_highlights_gemini
-from core.video_splitter import extract_vertical_clip
+from core.video_splitter import extract_vertical_clip, GRID_CELLS, GRID_LAYOUT_SLOTS
 from core.vad_sync import get_clip_timeline, export_srt
 from core.video_gen import render_subtitles_on_video, generate_clip_thumbnail, FONT_CATALOGUE
 from core.tts_engine import get_available_tts_models, generate_voiceover, overlay_voice_with_ducking, check_sbv2_status
@@ -39,7 +39,14 @@ JOB_STORE = {}
 @app.route('/')
 def index():
     tts_info = get_available_tts_models()
-    return render_template('index.html', fonts=FONT_CATALOGUE, tts_info=tts_info)
+    return render_template(
+        'index.html',
+        fonts=FONT_CATALOGUE,
+        tts_info=tts_info,
+        grid_cells=GRID_CELLS,
+        grid_layouts=GRID_LAYOUT_SLOTS
+    )
+
 
 
 @app.route('/api/tts_status')
@@ -161,7 +168,15 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
             # Cut 9:16 vertical raw video
             raw_clip_filename = f"clip_{clip_idx}_raw.mp4"
             raw_clip_path = os.path.join(job_out_dir, raw_clip_filename)
-            extract_vertical_clip(video_path, start_s, end_s, raw_clip_path, crop_mode=crop_mode)
+            grid_layout = settings.get('grid_layout', 'split_2_vertical')
+            grid_slots = settings.get('grid_slots', ['A', 'F'])
+            extract_vertical_clip(
+                video_path, start_s, end_s, raw_clip_path,
+                crop_mode=crop_mode,
+                grid_layout=grid_layout,
+                grid_slots=grid_slots
+            )
+
 
             # Optional: Synthesize Voiceover Hook & Ducking
             effective_video_path = raw_clip_path

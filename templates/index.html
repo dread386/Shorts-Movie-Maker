@@ -92,12 +92,66 @@
             <label for="cropMode">縦型クロップ方式 (9:16)</label>
             <select id="cropMode">
               <option value="blur_pad" selected>背景ぼかしパディング (手元・全体が見切れない / ギター推奨)</option>
+              <option value="grid_split">📐 8区画グリッド分割 (上下2分割 / 3分割 / 4分割タイル)</option>
               <option value="center_crop">中央固定クロップ (一般的な人物トーク向け)</option>
               <option value="left_crop">左手・指板フォーカス (ギター運指アップ)</option>
               <option value="right_crop">右手・ピッキングフォーカス</option>
               <option value="fit_letterbox">上下黒帯 (レターボックス)</option>
             </select>
           </div>
+
+          <!-- 8-Grid Segmentation Control Panel (Shown when cropMode == 'grid_split') -->
+          <div class="form-group full-width hidden" id="gridSettingsPanel">
+            <div class="grid-control-card">
+              <div class="grid-control-header">
+                <h4>📐 横動画 8分割 (A〜H) マッピング設定</h4>
+                <p class="grid-control-hint">横動画（16:9）を8区画に定義し、縦動画（9:16）の各スロットに自由に配置できます。</p>
+              </div>
+
+              <!-- Visual 8-Grid Map Preview -->
+              <div class="grid-visual-map">
+                <div class="grid-map-label-top">【元動画 16:9 グリッドマップ】</div>
+                <div class="grid-map-cells">
+                  <div class="grid-cell" data-cell="A"><span class="cell-tag">A</span><span class="cell-desc">左手上</span></div>
+                  <div class="grid-cell" data-cell="B"><span class="cell-tag">B</span><span class="cell-desc">中左上</span></div>
+                  <div class="grid-cell" data-cell="C"><span class="cell-tag">C</span><span class="cell-desc">中右上・顔</span></div>
+                  <div class="grid-cell" data-cell="D"><span class="cell-tag">D</span><span class="cell-desc">右上</span></div>
+                  <div class="grid-cell" data-cell="E"><span class="cell-tag">E</span><span class="cell-desc">左手下</span></div>
+                  <div class="grid-cell" data-cell="F"><span class="cell-tag">F</span><span class="cell-desc">ピッキング</span></div>
+                  <div class="grid-cell" data-cell="G"><span class="cell-tag">G</span><span class="cell-desc">ボディ/アンプ</span></div>
+                  <div class="grid-cell" data-cell="H"><span class="cell-tag">H</span><span class="cell-desc">右下</span></div>
+                </div>
+              </div>
+
+              <div class="grid-options-grid">
+                <!-- Layout Selection -->
+                <div>
+                  <label for="gridLayoutSelect" class="sub-label">縦動画の分割レイアウト</label>
+                  <select id="gridLayoutSelect" class="modal-select">
+                    {% for key, val in grid_layouts.items() %}
+                    <option value="{{ key }}" {% if key == 'split_2_vertical' %}selected{% endif %}>{{ val.label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <!-- Presets -->
+                <div>
+                  <label class="sub-label">⚡ おすすめプリセット</label>
+                  <div class="grid-preset-btns">
+                    <button type="button" class="btn-preset" data-preset="guitar_2">🎸 ギター2画面 (上: A / 下: F)</button>
+                    <button type="button" class="btn-preset" data-preset="guitar_3">🎸 ギター3画面 (顔: C / 左手: A / 右手: F)</button>
+                    <button type="button" class="btn-preset" data-preset="grid_4">📊 4画面タイル (A/B/E/F)</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dynamic Slots Container -->
+              <div class="grid-slots-container" id="gridSlotsContainer">
+                <!-- Populated dynamically based on layout -->
+              </div>
+            </div>
+          </div>
+
 
           <!-- Target Duration -->
           <div class="form-group">

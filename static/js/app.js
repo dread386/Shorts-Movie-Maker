@@ -1,6 +1,6 @@
 /**
- * Shorts Movie Maker — Frontend Controller with In-App Subtitle & Banner Editor,
- * Style-BERT-VITS2 Voiceover, and High-CTR 9:16 Thumbnails
+ * Shorts Movie Maker v1.2.0 — Frontend Controller
+ * With 8-Grid (A-H) Segmentation, Subtitle & Banner Editor, Style-BERT-VITS2 & High-CTR 9:16 Thumbnails
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const geminiApiKeyInput = document.getElementById('geminiApiKey');
   const customTopicInput = document.getElementById('customTopic');
   const cropModeSelect = document.getElementById('cropMode');
+  const gridSettingsPanel = document.getElementById('gridSettingsPanel');
+  const gridLayoutSelect = document.getElementById('gridLayoutSelect');
+  const gridSlotsContainer = document.getElementById('gridSlotsContainer');
+
   const targetDurationSelect = document.getElementById('targetDuration');
   const maxClipsSelect = document.getElementById('maxClips');
   const ttsEngineSelect = document.getElementById('ttsEngine');
@@ -52,6 +56,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const cancelModalBtn = document.getElementById('cancelModalBtn');
   const saveAndRerenderBtn = document.getElementById('saveAndRerenderBtn');
   const reRenderBtnText = document.getElementById('reRenderBtnText');
+
+  // Grid definitions
+  const GRID_CELLS = [
+    { key: 'A', label: 'A (左手上・ネック)' },
+    { key: 'B', label: 'B (中央左上)' },
+    { key: 'C', label: 'C (中央右上・顔)' },
+    { key: 'D', label: 'D (右上)' },
+    { key: 'E', label: 'E (左手下)' },
+    { key: 'F', label: 'F (ピッキング手元)' },
+    { key: 'G', label: 'G (ボディ/アンプ)' },
+    { key: 'H', label: 'H (右下)' },
+    { key: 'AB', label: 'A+B (左上ワイド)' },
+    { key: 'BC', label: 'B+C (中央上ワイド)' },
+    { key: 'CD', label: 'C+D (右上ワイド)' },
+    { key: 'EF', label: 'E+F (左下ワイド・手元)' },
+    { key: 'FG', label: 'F+G (中央下ワイド・ギター)' },
+    { key: 'GH', label: 'G+H (右下ワイド)' },
+    { key: 'FULL', label: 'FULL (16:9全体)' },
+    { key: 'CENTER', label: 'CENTER (中央フォーカス)' }
+  ];
+
+  const LAYOUT_SLOT_COUNTS = {
+    'split_2_vertical': 2,
+    'split_3_vertical': 3,
+    'split_4_vertical': 4,
+    'grid_2x2': 4,
+    'split_2_horizontal': 2
+  };
 
   // Check SBV2 status on load and periodically
   checkTtsStatus();
@@ -93,6 +125,81 @@ document.addEventListener('DOMContentLoaded', () => {
   let pollInterval = null;
   let editingJobId = null;
   let editingClipIdx = null;
+
+  // Grid Mode Toggle & Slot Rendering
+  cropModeSelect.addEventListener('change', () => {
+    if (cropModeSelect.value === 'grid_split') {
+      gridSettingsPanel.classList.remove('hidden');
+      renderGridSlots(gridLayoutSelect.value);
+    } else {
+      gridSettingsPanel.classList.add('hidden');
+    }
+  });
+
+  gridLayoutSelect.addEventListener('change', () => {
+    renderGridSlots(gridLayoutSelect.value);
+  });
+
+  // Render Slots dynamically
+  function renderGridSlots(layoutKey, presetValues = null) {
+    const count = LAYOUT_SLOT_COUNTS[layoutKey] || 2;
+    gridSlotsContainer.innerHTML = '';
+
+    const defaultAssignments = presetValues || (
+      layoutKey === 'split_2_vertical' ? ['A', 'F'] :
+      layoutKey === 'split_3_vertical' ? ['C', 'A', 'F'] :
+      layoutKey === 'grid_2x2' ? ['A', 'B', 'E', 'F'] :
+      layoutKey === 'split_4_vertical' ? ['A', 'B', 'E', 'F'] :
+      ['A', 'F']
+    );
+
+    for (let i = 0; i < count; i++) {
+      const slotDiv = document.createElement('div');
+      slotDiv.className = 'grid-slot-row';
+      
+      const slotLabel = layoutKey === 'split_2_vertical' ? (i === 0 ? '上段 スロット 1' : '下段 スロット 2') :
+                        layoutKey === 'split_3_vertical' ? (i === 0 ? '上段 (顔/上)' : i === 1 ? '中段 (左手)' : '下段 (右手)') :
+                        layoutKey === 'grid_2x2' ? (i === 0 ? '左上' : i === 1 ? '右上' : i === 2 ? '左下' : '右下') :
+                        `スロット ${i + 1}`;
+
+      const selectedVal = defaultAssignments[i] || GRID_CELLS[i % GRID_CELLS.length].key;
+
+      let optionsHtml = '';
+      GRID_CELLS.forEach(c => {
+        const isSel = c.key === selectedVal ? 'selected' : '';
+        optionsHtml += `<option value="${c.key}" ${isSel}>${c.label}</option>`;
+      });
+
+      slotDiv.innerHTML = `
+        <span class="slot-badge">${slotLabel}</span>
+        <select class="modal-select slot-select" data-slot-index="${i}">
+          ${optionsHtml}
+        </select>
+      `;
+
+      gridSlotsContainer.appendChild(slotDiv);
+    }
+  }
+
+  // Presets
+  document.querySelectorAll('.btn-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = btn.getAttribute('data-preset');
+      if (p === 'guitar_2') {
+        gridLayoutSelect.value = 'split_2_vertical';
+        renderGridSlots('split_2_vertical', ['A', 'F']);
+      } else if (p === 'guitar_3') {
+        gridLayoutSelect.value = 'split_3_vertical';
+        renderGridSlots('split_3_vertical', ['C', 'A', 'F']);
+      } else if (p === 'grid_4') {
+        gridLayoutSelect.value = 'grid_2x2';
+        renderGridSlots('grid_2x2', ['A', 'B', 'E', 'F']);
+      }
+    });
+  });
+
+  // Initial Grid Slots render
+  renderGridSlots('split_2_vertical');
 
   // 1. Drag & Drop handlers
   ['dragenter', 'dragover'].forEach(eventName => {
@@ -205,18 +312,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const { ttsEngine, ttsModel, ttsEnabled } = parseTtsValue(ttsEngineSelect.value);
 
+    // Collect grid slots
+    const gridSlots = [];
+    document.querySelectorAll('#gridSlotsContainer .slot-select').forEach(sel => {
+      gridSlots.push(sel.value);
+    });
+
     const settings = {
       gemini_api_key: apiKey,
       custom_topic: customTopicInput.value.trim(),
       target_duration: parseFloat(targetDurationSelect.value),
       max_clips: parseInt(maxClipsSelect.value, 10),
+      crop_mode: cropModeSelect.value,
+      grid_layout: gridLayoutSelect.value,
+      grid_slots: gridSlots,
       tts_enabled: ttsEnabled,
       tts_engine: ttsEngine,
       tts_model: ttsModel,
       banner_font_size: parseInt(bannerFontSizeSelect.value, 10),
       banner_style: bannerStyleSelect.value,
       whisper_model: whisperModelSelect.value,
-      crop_mode: cropModeSelect.value,
       show_subtitles: showSubtitlesCheckbox.checked,
       show_header_banner: showHeaderBannerCheckbox.checked,
       custom_banner_text: customBannerTextInput.value.trim(),
