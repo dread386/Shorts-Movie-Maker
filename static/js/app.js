@@ -19,10 +19,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const gridSettingsPanel = document.getElementById('gridSettingsPanel');
   const gridLayoutSelect = document.getElementById('gridLayoutSelect');
   const gridSlotsContainer = document.getElementById('gridSlotsContainer');
+  const gridPreviewVideo = document.getElementById('gridPreviewVideo');
   const gridPreviewImg = document.getElementById('gridPreviewImg');
   const gridPreviewPlaceholder = document.getElementById('gridPreviewPlaceholder');
+  const gridVideoControls = document.getElementById('gridVideoControls');
+  const gridPlayBtn = document.getElementById('gridPlayBtn');
+  const gridSeekbar = document.getElementById('gridSeekbar');
+  const gridTimeDisplay = document.getElementById('gridTimeDisplay');
 
   const targetDurationSelect = document.getElementById('targetDuration');
+
 
   const maxClipsSelect = document.getElementById('maxClips');
   const ttsEngineSelect = document.getElementById('ttsEngine');
@@ -313,14 +319,53 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUpload();
   });
 
+  // Grid Video Playback & Seek Controls
+  if (gridPlayBtn && gridPreviewVideo) {
+    gridPlayBtn.addEventListener('click', () => {
+      if (gridPreviewVideo.paused) {
+        gridPreviewVideo.play();
+        gridPlayBtn.textContent = '⏸ 一時停止';
+      } else {
+        gridPreviewVideo.pause();
+        gridPlayBtn.textContent = '▶ 再生';
+      }
+    });
+
+    gridPreviewVideo.addEventListener('timeupdate', () => {
+      if (!isNaN(gridPreviewVideo.duration) && gridPreviewVideo.duration > 0) {
+        const pct = (gridPreviewVideo.currentTime / gridPreviewVideo.duration) * 100;
+        gridSeekbar.value = pct;
+
+        const curM = Math.floor(gridPreviewVideo.currentTime / 60);
+        const curS = Math.floor(gridPreviewVideo.currentTime % 60);
+        const durM = Math.floor(gridPreviewVideo.duration / 60);
+        const durS = Math.floor(gridPreviewVideo.duration % 60);
+        gridTimeDisplay.textContent = `${String(curM).padStart(2, '0')}:${String(curS).padStart(2, '0')} / ${String(durM).padStart(2, '0')}:${String(durS).padStart(2, '0')}`;
+      }
+    });
+
+    gridSeekbar.addEventListener('input', () => {
+      if (!isNaN(gridPreviewVideo.duration) && gridPreviewVideo.duration > 0) {
+        const time = (parseFloat(gridSeekbar.value) / 100) * gridPreviewVideo.duration;
+        gridPreviewVideo.currentTime = time;
+      }
+    });
+  }
+
   function resetUpload() {
     currentJobId = null;
     currentFilename = null;
     fileInput.value = '';
     videoInfoBar.classList.add('hidden');
     dropzone.classList.remove('hidden');
-    gridPreviewImg.src = '';
-    gridPreviewPlaceholder.classList.remove('hidden');
+    
+    if (gridPreviewVideo) {
+      gridPreviewVideo.pause();
+      gridPreviewVideo.src = '';
+    }
+    if (gridPreviewImg) gridPreviewImg.src = '';
+    if (gridPreviewPlaceholder) gridPreviewPlaceholder.classList.remove('hidden');
+    if (gridVideoControls) gridVideoControls.classList.add('hidden');
     startBtn.disabled = true;
   }
 
@@ -330,6 +375,19 @@ document.addEventListener('DOMContentLoaded', () => {
     displaySpecs.textContent = "サーバーに送信中...";
     videoInfoBar.classList.remove('hidden');
     dropzone.classList.add('hidden');
+
+    // Instantly load local video into grid preview player (0.01s latency)
+    try {
+      const localBlobUrl = URL.createObjectURL(file);
+      if (gridPreviewVideo) {
+        gridPreviewVideo.src = localBlobUrl;
+        gridPreviewVideo.currentTime = 0.5;
+        gridPreviewPlaceholder.classList.add('hidden');
+        gridVideoControls.classList.remove('hidden');
+      }
+    } catch (e) {
+      console.warn('Local preview load error', e);
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -357,18 +415,13 @@ document.addEventListener('DOMContentLoaded', () => {
       displayFilename.textContent = file.name;
       displaySpecs.textContent = `長さ: ${durStr} | 解像度: ${data.video_info.width}x${data.video_info.height} | ${data.video_info.fps}fps`;
 
-      // Set live preview frame background
-      if (data.preview_image_url) {
-        gridPreviewImg.src = `${data.preview_image_url}?t=${Date.now()}`;
-        gridPreviewPlaceholder.classList.add('hidden');
-      }
-
       startBtn.disabled = false;
     } catch (e) {
       alert(`エラー: ${e.message}`);
       resetUpload();
     }
   }
+
 
 
   // Helper to parse TTS value

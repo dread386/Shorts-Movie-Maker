@@ -966,19 +966,45 @@ input:focus, select:focus {
   margin-top: 2px;
 }
 
-  background: rgba(99, 102, 241, 0.15);
+/* Grid Video Controls */
+.grid-video-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(11, 14, 20, 0.9);
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-top: 8px;
 }
 
-.cell-tag {
-  font-size: 1rem;
-  font-weight: 800;
-  color: #FBBF24;
+.btn-grid-play {
+  background: #4F46E5;
+  color: #FFF;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.cell-desc {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  margin-top: 2px;
+.btn-grid-play:hover {
+  background: #6366F1;
+}
+
+.grid-seekbar {
+  flex: 1;
+  accent-color: #6366F1;
+  cursor: pointer;
+}
+
+.grid-time-display {
+  font-size: 0.75rem;
+  color: #CBD5E1;
+  font-family: monospace;
+  white-space: nowrap;
 }
 
 .grid-options-grid {
@@ -987,6 +1013,7 @@ input:focus, select:focus {
   gap: 16px;
   margin-bottom: 16px;
 }
+
 
 .sub-label {
   display: block;
