@@ -39,8 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const displayModeSelect = document.getElementById('displayMode');
   const previewVoiceBtn = document.getElementById('previewVoiceBtn');
   const modalPreviewVoiceBtn = document.getElementById('modalPreviewVoiceBtn');
+  const storageCleanBtn = document.getElementById('storageCleanBtn');
+  const storageSizeText = document.getElementById('storageSizeText');
+  const storageCleanResultBtn = document.getElementById('storageCleanResultBtn');
 
   const startBtn = document.getElementById('startBtn');
+
 
   const stepProgress = document.getElementById('stepProgress');
   const progressPhase = document.getElementById('progressPhase');
@@ -135,6 +139,10 @@ document.addEventListener('DOMContentLoaded', () => {
   checkTtsStatus();
   setInterval(checkTtsStatus, 10000);
 
+  // Check Storage size on load and periodically
+  updateStorageInfo();
+  setInterval(updateStorageInfo, 15000);
+
   async function checkTtsStatus() {
     try {
       const res = await fetch('/api/tts_status');
@@ -149,6 +157,43 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {}
   }
+
+  async function updateStorageInfo() {
+    try {
+      const res = await fetch('/api/storage/info');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (storageSizeText) {
+        storageSizeText.textContent = data.total_formatted || '0 B';
+      }
+    } catch (e) {}
+  }
+
+  async function handleCleanStorage() {
+    const ok = confirm("⚠️ アップロードした元動画ファイルおよび生成済み動画・サムネイル・中間ファイルをすべて一括削除して、ディスク容量を解放しますか？\n\n（ダウンロード済みのファイルは安全です）");
+    if (!ok) return;
+
+    try {
+      const res = await fetch('/api/storage/clean', { method: 'POST' });
+      if (!res.ok) throw new Error('クリーンアップに失敗しました');
+      const data = await res.json();
+      alert(`🎉 ${data.freed_formatted} の容量を正常に解放しました！`);
+      updateStorageInfo();
+      resetUpload();
+      resultsArea.classList.add('hidden');
+      stepProgress.classList.add('hidden');
+    } catch (e) {
+      alert(`エラー: ${e.message}`);
+    }
+  }
+
+  if (storageCleanBtn) {
+    storageCleanBtn.addEventListener('click', handleCleanStorage);
+  }
+  if (storageCleanResultBtn) {
+    storageCleanResultBtn.addEventListener('click', handleCleanStorage);
+  }
+
 
   // Load saved API Key from localStorage
   const savedApiKey = localStorage.getItem('shorts_maker_gemini_key');
@@ -615,6 +660,8 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsArea.classList.remove('hidden');
     zipDownloadBtn.href = `/api/download_zip/${jobId}`;
     clipsGrid.innerHTML = '';
+    updateStorageInfo();
+
 
     if (!clips || clips.length === 0) {
       clipsGrid.innerHTML = '<p class="text-muted">クリップが生成されませんでした。</p>';

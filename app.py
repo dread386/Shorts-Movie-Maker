@@ -15,6 +15,7 @@ import zipfile
 import threading
 import base64
 import subprocess
+import shutil
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 
@@ -39,6 +40,28 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 JOB_STORE = {}
 
 
+def _get_dir_size(path: str) -> int:
+    total = 0
+    if os.path.exists(path):
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                if f != '.gitkeep':
+                    fp = os.path.join(root, f)
+                    try:
+                        total += os.path.getsize(fp)
+                    except OSError:
+                        pass
+    return total
+
+
+def _format_bytes(size: int) -> str:
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} PB"
+
+
 @app.route('/')
 def index():
     tts_info = get_available_tts_models()
@@ -49,6 +72,59 @@ def index():
         grid_cells=GRID_CELLS,
         grid_layouts=GRID_LAYOUT_SLOTS
     )
+
+
+@app.route('/api/storage/info')
+def get_storage_info():
+    u_size = _get_dir_size(UPLOAD_DIR)
+    o_size = _get_dir_size(OUTPUT_DIR)
+    total = u_size + o_size
+    return jsonify({
+        'total_bytes': total,
+        'total_formatted': _format_bytes(total),
+        'uploads_bytes': u_size,
+        'outputs_bytes': o_size
+    })
+
+
+@app.route('/api/storage/clean', methods=['POST'])
+def clean_storage():
+    u_size = _get_dir_size(UPLOAD_DIR)
+    o_size = _get_dir_size(OUTPUT_DIR)
+    freed = u_size + o_size
+
+    # Clean uploads
+    for entry in os.listdir(UPLOAD_DIR):
+        if entry != '.gitkeep':
+            p = os.path.join(UPLOAD_DIR, entry)
+            try:
+                if os.path.isdir(p):
+                    shutil.rmtree(p)
+                else:
+                    os.remove(p)
+            except Exception:
+                pass
+
+    # Clean outputs
+    for entry in os.listdir(OUTPUT_DIR):
+        if entry != '.gitkeep':
+            p = os.path.join(OUTPUT_DIR, entry)
+            try:
+                if os.path.isdir(p):
+                    shutil.rmtree(p)
+                else:
+                    os.remove(p)
+            except Exception:
+                pass
+
+    JOB_STORE.clear()
+
+    return jsonify({
+        'status': 'success',
+        'freed_bytes': freed,
+        'freed_formatted': _format_bytes(freed)
+    })
+
 
 
 
