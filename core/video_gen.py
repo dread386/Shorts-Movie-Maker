@@ -1,8 +1,8 @@
 """
 video_gen.py
 ------------
-Burns rendered animated / outlined subtitles and optional header banners
-onto vertical video clips (1080x1920) using Pillow and FFmpeg frame piping.
+Burns rendered animated / outlined subtitles, multi-line auto-scaled header banners,
+and generates high-CTR 9:16 vertical thumbnails using Pillow and FFmpeg.
 """
 
 import os
@@ -49,14 +49,15 @@ DEFAULT_SETTINGS = {
     'outline_width': 6,
     'position': 'bottom', # 'top' | 'center' | 'bottom'
     'bottom_margin': 340, # Above typical TikTok/Shorts bottom UI
-    'top_margin': 200,
+    'top_margin': 180,
     'fade_in': 0.1,
     'fade_out': 0.1,
     'display_mode': '1_line',
     'max_chars_per_line': 12,
     'show_subtitles': True,
     'show_header_banner': True,
-    'custom_banner_text': ''
+    'custom_banner_text': '',
+    'banner_style': 'yellow_black' # 'yellow_black' | 'red_black' | 'simple_black'
 }
 
 
@@ -89,7 +90,132 @@ def _load_font(font_key: str, font_size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
-def _draw_outlined_text(draw, text, font, cx, y, text_rgba, outline_rgba, outline_w, font_weight=1):
+def _wrap_banner_text(text: str, font_key: str, base_font_size: int, max_width: int = 940) -> tuple[list[str], ImageFont.FreeTypeFont]:
+    """
+    Splits banner text into lines that fit within max_width (px).
+    Automatically reduces font size if necessary.
+    """
+    raw_lines = text.strip().split('\n')
+    current_size = base_font_size
+
+    # Try sizes down to 32px until text fits well
+    while current_size >= 32:
+        font = _load_font(font_key, current_size)
+        wrapped_lines = []
+        fits_all = True
+
+        for raw_line in raw_lines:
+            raw_line = raw_line.strip()
+            if not raw_line:
+                continue
+
+            # Check if line fits without splitting
+            bbox = font.getbbox(raw_line)
+            line_w = bbox[2] - bbox[0]
+            if line_w <= max_width:
+                wrapped_lines.append(raw_line)
+                continue
+
+            # Word / char wrap
+            curr = ""
+            for ch in raw_line:
+                test_str = curr + ch
+                tb = font.getbbox(test_str)
+                if (tb[2] - tb[0]) <= max_width:
+                    curr = test_str
+                else:
+                    if curr:
+                        wrapped_lines.append(curr)
+                    curr = ch
+            if curr:
+                wrapped_lines.append(curr)
+
+        # Max 3 lines for banner header
+        if len(wrapped_lines) <= 3:
+            return wrapped_lines, font
+
+        # If too many lines, scale down font
+        current_size -= 4
+
+    font = _load_font(font_key, current_size)
+    return wrapped_lines, font
+
+
+def _draw_smart_banner(draw: ImageDraw.ImageDraw,
+                       banner_text: str,
+                       cx: int,
+                       top_margin: int,
+                       font_key: str = 'ja_kaku',
+                       base_font_size: int = 50,
+                       banner_style: str = 'yellow_black'):
+    """
+    Renders multi-line, auto-scaled high-impact hook banner at top of frame.
+    """
+    if not banner_text:
+        return
+
+    lines, font = _wrap_banner_text(banner_text, font_key, base_font_size, max_width=920)
+    if not lines:
+        return
+
+    line_heights = []
+    line_widths = []
+    for l in lines:
+        bb = font.getbbox(l)
+        line_widths.append(bb[2] - bb[0])
+        line_heights.append(bb[3] - bb[1])
+
+    max_w = max(line_widths)
+    line_spacing = int(font.size * 0.22)
+    total_text_h = sum(line_heights) + line_spacing * max(0, len(lines) - 1)
+
+    pad_x = 36
+    pad_y = 22
+    bw = max_w + pad_x * 2
+    bh = total_text_h + pad_y * 2
+    bx = cx - bw // 2
+    by = top_margin
+
+    # Style definitions
+    if banner_style == 'red_black':
+        bg_color = (15, 15, 20, 220)
+        border_color = (255, 60, 60, 255)
+        text_color = (255, 255, 255, 255)
+        border_w = 4
+    elif banner_style == 'simple_black':
+        bg_color = (0, 0, 0, 200)
+        border_color = (255, 255, 255, 180)
+        text_color = (255, 255, 255, 255)
+        border_w = 2
+    else: # yellow_black (Classic YouTube Hook / Blew style)
+        bg_color = (10, 10, 15, 225)
+        border_color = (255, 220, 0, 255)
+        text_color = (255, 255, 255, 255)
+        border_w = 4
+
+    # Outer subtle shadow
+    draw.rounded_rectangle([bx + 4, by + 4, bx + bw + 4, by + bh + 4], radius=20, fill=(0, 0, 0, 120))
+    # Main badge box
+    draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=20, fill=bg_color, outline=border_color, width=border_w)
+
+    # Render lines centered
+    curr_y = by + pad_y
+    for i, line in enumerate(lines):
+        bb = font.getbbox(line)
+        lw = bb[2] - bb[0]
+        lh = bb[3] - bb[1]
+        lx = cx - lw // 2
+        
+        # Slight text outline for maximum legibility
+        for dx in (-2, 0, 2):
+            for dy in (-2, 0, 2):
+                if dx != 0 or dy != 0:
+                    draw.text((lx + dx, curr_y + dy), line, font=font, fill=(0, 0, 0, 220))
+        draw.text((lx, curr_y), line, font=font, fill=text_color)
+        curr_y += lh + line_spacing
+
+
+def _draw_outlined_text(draw, text, font, cx, y, text_rgba, outline_rgba, outline_w, font_weight=2):
     lines = text.split('\n')
     curr_y = y
     eff_outline = outline_w + font_weight
@@ -103,7 +229,7 @@ def _draw_outlined_text(draw, text, font, cx, y, text_rgba, outline_rgba, outlin
         th = bbox[3] - bbox[1]
         x = cx - tw // 2
 
-        # Draw thick outline
+        # Draw thick outline with dual-pass for maximum contrast
         for dx in range(-eff_outline, eff_outline + 1):
             for dy in range(-eff_outline, eff_outline + 1):
                 if dx == 0 and dy == 0:
@@ -124,13 +250,14 @@ def render_subtitles_on_video(input_video_path: str,
                              settings: dict = None,
                              progress_cb=None):
     """
-    Burn subtitles and header badge on top of a 9:16 vertical video clip.
+    Burn subtitles and multi-line auto-scaled header banner on top of vertical video (1080x1920).
     """
     s = {**DEFAULT_SETTINGS, **(settings or {})}
     W, H, FPS = s['width'], s['height'], s['fps']
     show_subtitles = s.get('show_subtitles', True)
     show_banner = s.get('show_header_banner', True)
     custom_banner = s.get('custom_banner_text', '').strip()
+    banner_style = s.get('banner_style', 'yellow_black')
 
     # If neither subtitles nor banner is needed, copy original
     if not show_subtitles and not show_banner:
@@ -148,7 +275,6 @@ def render_subtitles_on_video(input_video_path: str,
     ) if show_subtitles else []
 
     font = _load_font(s['font_key'], s['font_size'])
-    badge_font = _load_font(s['font_key'], int(s['font_size'] * 0.70))
 
     # Read video frames with ffmpeg pipe
     probe_cmd = [
@@ -233,16 +359,17 @@ def render_subtitles_on_video(input_video_path: str,
             img = Image.frombytes('RGB', (W, H), raw_frame)
             draw = ImageDraw.Draw(img, 'RGBA')
 
-            # 1. Top Header Badge (Hook / Title)
+            # 1. Top Header Badge (Multi-line Smart Auto-Scaled Banner)
             if banner_text:
-                b_bbox = badge_font.getbbox(banner_text)
-                bw = b_bbox[2] - b_bbox[0] + 44
-                bh = b_bbox[3] - b_bbox[1] + 26
-                bx = cx - bw // 2
-                by = t_margin
-                # Rounded badge with yellow accent border
-                draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=18, fill=(0, 0, 0, 190), outline=(255, 230, 0, 240), width=3)
-                draw.text((cx - (b_bbox[2] - b_bbox[0]) // 2, by + 12), banner_text, font=badge_font, fill=(255, 255, 255, 255))
+                _draw_smart_banner(
+                    draw=draw,
+                    banner_text=banner_text,
+                    cx=cx,
+                    top_margin=t_margin,
+                    font_key=s['font_key'],
+                    base_font_size=int(s['font_size'] * 0.75),
+                    banner_style=banner_style
+                )
 
             # 2. Render Subtitles matching current timestamp t
             if show_subtitles and split_timeline:
@@ -256,7 +383,7 @@ def render_subtitles_on_video(input_video_path: str,
                         if pos == 'bottom':
                             text_y = H - b_margin - total_th
                         elif pos == 'top':
-                            text_y = t_margin + 110
+                            text_y = t_margin + 130
                         else:
                             text_y = (H - total_th) // 2
 
@@ -286,3 +413,77 @@ def render_subtitles_on_video(input_video_path: str,
         progress_cb(1.0)
 
     return output_video_path
+
+
+def generate_clip_thumbnail(video_path: str,
+                            output_png_path: str,
+                            banner_text: str,
+                            subtitle_text: str = "",
+                            settings: dict = None,
+                            capture_sec: float = 0.5) -> str:
+    """
+    Extracts a representative frame from vertical video and renders
+    a high-impact, high-CTR 9:16 thumbnail image (1080x1920 PNG).
+    """
+    s = {**DEFAULT_SETTINGS, **(settings or {})}
+    W, H = s['width'], s['height']
+    font_key = s['font_key']
+    banner_style = s.get('banner_style', 'yellow_black')
+    t_margin = s.get('top_margin', 180)
+    cx = W // 2
+
+    # 1. Capture single frame with FFmpeg
+    raw_frame_path = output_png_path + ".tmp.png"
+    cmd = [
+        'ffmpeg', '-y',
+        '-ss', str(capture_sec),
+        '-i', video_path,
+        '-vframes', '1',
+        '-s', f"{W}x{H}",
+        raw_frame_path
+    ]
+    try:
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        img = Image.open(raw_frame_path).convert('RGB')
+    except Exception:
+        # Fallback create dark canvas
+        img = Image.new('RGB', (W, H), (20, 20, 28))
+    finally:
+        if os.path.exists(raw_frame_path):
+            try:
+                os.remove(raw_frame_path)
+            except Exception:
+                pass
+
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    # 2. Render Extra Punchy Header Banner
+    if banner_text:
+        _draw_smart_banner(
+            draw=draw,
+            banner_text=banner_text,
+            cx=cx,
+            top_margin=t_margin,
+            font_key=font_key,
+            base_font_size=56,
+            banner_style=banner_style
+        )
+
+    # 3. If subtitle text is given, render a punchy bottom text
+    if subtitle_text:
+        sub_font = _load_font(font_key, 72)
+        _draw_outlined_text(
+            draw=draw,
+            text=subtitle_text,
+            font=sub_font,
+            cx=cx,
+            y=H - 420,
+            text_rgba=(255, 240, 0, 255),
+            outline_rgba=(0, 0, 0, 255),
+            outline_w=8,
+            font_weight=3
+        )
+
+    img.save(output_png_path, format='PNG', quality=95)
+    return output_png_path
+

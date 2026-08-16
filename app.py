@@ -2,7 +2,8 @@
 app.py
 ------
 Flask Web Application for Shorts Movie Maker.
-Includes in-app Subtitle / SRT Editor and Instant Re-rendering.
+Includes in-app Subtitle / SRT & Banner Editor, Voiceover (Style-BERT-VITS2 & edge-tts),
+Instant Re-rendering, and High-CTR 9:16 Thumbnail Generation.
 """
 
 import os
@@ -20,7 +21,8 @@ from core.whisper_sync import transcribe_full_audio
 from core.highlight_detector import detect_highlights_gemini
 from core.video_splitter import extract_vertical_clip
 from core.vad_sync import get_clip_timeline, export_srt
-from core.video_gen import render_subtitles_on_video, FONT_CATALOGUE
+from core.video_gen import render_subtitles_on_video, generate_clip_thumbnail, FONT_CATALOGUE
+from core.tts_engine import get_available_tts_models, generate_sbv2_audio, generate_edge_tts_audio, overlay_voice_with_ducking
 
 
 app = Flask(__name__)
@@ -36,7 +38,8 @@ JOB_STORE = {}
 
 @app.route('/')
 def index():
-    return render_template('index.html', fonts=FONT_CATALOGUE)
+    tts_info = get_available_tts_models()
+    return render_template('index.html', fonts=FONT_CATALOGUE, tts_info=tts_info)
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -72,7 +75,8 @@ def upload_file():
 
 def _process_video_job(job_id: str, video_path: str, settings: dict):
     """
-    Background worker that runs the full processing pipeline.
+    Background worker that runs the full processing pipeline:
+    Probe -> Extract Audio -> Whisper -> Gemini Highlights -> Vertical Cut -> TTS Hook & Ducking -> Burn Subs -> Thumbnails
     """
     def update_progress(pct: float, phase: str, clips=None, error=None):
         JOB_STORE[job_id].update({
@@ -92,7 +96,7 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
         total_dur = v_info['duration']
 
         # 2. Extract Audio
-        update_progress(0.12, "音声トラックを抽出中 (FFmpeg)...")
+        update_progress(0.10, "音声トラックを抽出中 (FFmpeg)...")
         wav_path = os.path.join(job_out_dir, f"audio_{job_id}.wav")
         extract_audio(video_path, wav_path)
 
@@ -101,9 +105,9 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
         language = settings.get('language', 'ja')
 
         def whisper_cb(sub_pct, msg):
-            update_progress(0.15 + sub_pct * 0.35, msg)
+            update_progress(0.12 + sub_pct * 0.38, msg)
 
-        update_progress(0.18, f"AI文字起こし中 (Whisper {whisper_model})...")
+        update_progress(0.15, f"AI文字起こし中 (Whisper {whisper_model})...")
         timeline = transcribe_full_audio(wav_path, model_size=whisper_model, language=language, progress_cb=whisper_cb)
 
         # 4. Highlight Detection (Gemini API / Rule-based)
@@ -124,10 +128,13 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
 
         update_progress(0.65, f"ハイライトシーン {len(highlight_clips)} 箇所を選定完了")
 
-        # 5. Extract clips & burn subtitles
-        crop_mode = settings.get('crop_mode', 'center_crop')
+        # 5. Extract clips, synthesize TTS, burn subtitles, & generate thumbnails
+        crop_mode = settings.get('crop_mode', 'blur_pad')
         show_subtitles = settings.get('show_subtitles', True)
         show_banner = settings.get('show_header_banner', True)
+        tts_enabled = settings.get('tts_enabled', True)
+        tts_engine_choice = settings.get('tts_engine', 'sbv2') # 'sbv2' | 'edge_tts' | 'off'
+        tts_model = settings.get('tts_model', 'my_voice')
 
         generated_clips = []
         num_clips = len(highlight_clips)
@@ -137,6 +144,8 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
             start_s = clip['start']
             end_s = clip['end']
             title = clip['title']
+            hook = clip.get('hook') or title
+            banner_text = settings.get('custom_banner_text', '').strip() or hook
             
             clip_progress_base = 0.65 + (i / max(1, num_clips)) * 0.30
             clip_progress_step = 0.30 / max(1, num_clips)
@@ -147,6 +156,24 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
             raw_clip_filename = f"clip_{clip_idx}_raw.mp4"
             raw_clip_path = os.path.join(job_out_dir, raw_clip_filename)
             extract_vertical_clip(video_path, start_s, end_s, raw_clip_path, crop_mode=crop_mode)
+
+            # Optional: Synthesize Voiceover Hook & Ducking
+            effective_video_path = raw_clip_path
+            if tts_enabled and tts_engine_choice != 'off' and banner_text:
+                update_progress(clip_progress_base + clip_progress_step * 0.2, f"ナレーション音声を合成中 #{clip_idx}...")
+                voice_wav_path = os.path.join(job_out_dir, f"voice_{clip_idx}.wav")
+                try:
+                    if tts_engine_choice == 'sbv2':
+                        generate_sbv2_audio(banner_text, voice_wav_path, model_name=tts_model)
+                    else:
+                        generate_edge_tts_audio(banner_text, voice_wav_path, voice=tts_model)
+
+                    if os.path.exists(voice_wav_path) and os.path.getsize(voice_wav_path) > 100:
+                        ducked_video_path = os.path.join(job_out_dir, f"clip_{clip_idx}_ducked.mp4")
+                        overlay_voice_with_ducking(raw_clip_path, voice_wav_path, ducked_video_path)
+                        effective_video_path = ducked_video_path
+                except Exception as e:
+                    print(f"[TTS Synthesis Error] {e}")
 
             # Get clip subtitle timeline
             clip_timeline = get_clip_timeline(timeline, start_s, end_s)
@@ -167,33 +194,46 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
             final_path = os.path.join(job_out_dir, final_filename)
 
             # Render Subtitles & Banner
-            if (show_subtitles and clip_timeline) or show_banner:
-                def render_cb(p):
-                    update_progress(clip_progress_base + p * clip_progress_step, f"テロップを焼き込み中 #{clip_idx} ({int(p*100)}%)...")
+            def render_cb(p):
+                update_progress(clip_progress_base + clip_progress_step * (0.4 + p * 0.5), f"テロップを焼き込み中 #{clip_idx} ({int(p*100)}%)...")
 
-                render_subtitles_on_video(
-                    input_video_path=raw_clip_path,
-                    timeline=clip_timeline,
-                    output_video_path=final_path,
-                    clip_meta=clip,
-                    settings=settings,
-                    progress_cb=render_cb
-                )
-            else:
-                import shutil
-                shutil.copy2(raw_clip_path, final_path)
+            clip_meta_for_render = {**clip, 'hook': banner_text}
+            render_subtitles_on_video(
+                input_video_path=effective_video_path,
+                timeline=clip_timeline,
+                output_video_path=final_path,
+                clip_meta=clip_meta_for_render,
+                settings=settings,
+                progress_cb=render_cb
+            )
+
+            # Generate High-CTR 9:16 Thumbnail Image
+            thumb_filename = f"thumb_{clip_idx}_{job_id}.png"
+            thumb_path = os.path.join(job_out_dir, thumb_filename)
+            first_sub = clip_timeline[0]['text'] if clip_timeline else ""
+            generate_clip_thumbnail(
+                video_path=final_path,
+                output_png_path=thumb_path,
+                banner_text=banner_text,
+                subtitle_text=first_sub,
+                settings=settings,
+                capture_sec=0.5
+            )
 
             generated_clips.append({
                 'index': clip_idx,
                 'title': title,
-                'hook': clip.get('hook', ''),
+                'hook': hook,
+                'banner_text': banner_text,
                 'summary': clip.get('summary', ''),
                 'start': start_s,
                 'end': end_s,
                 'duration': round(end_s - start_s, 1),
                 'video_url': f"/api/outputs/{job_id}/{final_filename}",
+                'thumbnail_url': f"/api/outputs/{job_id}/{thumb_filename}",
                 'srt_url': f"/api/outputs/{job_id}/{srt_filename}",
                 'filename': final_filename,
+                'thumb_filename': thumb_filename,
                 'timeline': clip_timeline
             })
 
@@ -201,7 +241,7 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
         JOB_STORE[job_id].update({
             'status': 'done',
             'progress': 1.0,
-            'phase': 'すべてのショート動画が完成しました！🎉',
+            'phase': 'すべてのショート動画＆サムネイルが完成しました！🎉',
             'clips': generated_clips,
             'settings': settings
         })
@@ -266,9 +306,17 @@ def get_clip_timeline_endpoint(job_id, clip_idx):
     with open(timeline_file, 'r', encoding='utf-8') as f:
         timeline = json.load(f)
 
+    banner_text = ""
+    if job_id in JOB_STORE and 'clips' in JOB_STORE[job_id]:
+        for c in JOB_STORE[job_id]['clips']:
+            if c['index'] == clip_idx:
+                banner_text = c.get('banner_text') or c.get('hook') or ""
+                break
+
     return jsonify({
         'job_id': job_id,
         'clip_index': clip_idx,
+        'banner_text': banner_text,
         'timeline': timeline
     })
 
@@ -276,7 +324,7 @@ def get_clip_timeline_endpoint(job_id, clip_idx):
 @app.route('/api/clips/re-render/<job_id>/<int:clip_idx>', methods=['POST'])
 def re_render_clip(job_id, clip_idx):
     """
-    Instantly re-burn edited subtitles and update SRT & video.
+    Instantly re-burn edited subtitles, updated banner text, voiceover, and re-generate thumbnail.
     """
     job_dir = os.path.join(OUTPUT_DIR, job_id)
     raw_clip_path = os.path.join(job_dir, f"clip_{clip_idx}_raw.mp4")
@@ -286,6 +334,8 @@ def re_render_clip(job_id, clip_idx):
 
     data = request.json or {}
     new_timeline = data.get('timeline', [])
+    new_banner_text = data.get('banner_text', '').strip()
+    regenerate_tts = data.get('regenerate_tts', False)
     settings = data.get('settings') or (JOB_STORE.get(job_id, {}).get('settings', {}))
 
     # 1. Save new timeline JSON
@@ -299,32 +349,74 @@ def re_render_clip(job_id, clip_idx):
     with open(srt_path, 'w', encoding='utf-8') as f:
         f.write(export_srt(new_timeline))
 
-    # 3. Re-render video
+    # 3. Optional: Regenerate Voiceover if requested
+    effective_video_path = raw_clip_path
+    tts_engine_choice = settings.get('tts_engine', 'sbv2')
+    tts_model = settings.get('tts_model', 'my_voice')
+
+    if regenerate_tts and new_banner_text and tts_engine_choice != 'off':
+        voice_wav_path = os.path.join(job_dir, f"voice_{clip_idx}.wav")
+        try:
+            if tts_engine_choice == 'sbv2':
+                generate_sbv2_audio(new_banner_text, voice_wav_path, model_name=tts_model)
+            else:
+                generate_edge_tts_audio(new_banner_text, voice_wav_path, voice=tts_model)
+
+            if os.path.exists(voice_wav_path) and os.path.getsize(voice_wav_path) > 100:
+                ducked_video_path = os.path.join(job_dir, f"clip_{clip_idx}_ducked.mp4")
+                overlay_voice_with_ducking(raw_clip_path, voice_wav_path, ducked_video_path)
+                effective_video_path = ducked_video_path
+        except Exception as e:
+            print(f"[Re-render TTS Error] {e}")
+    else:
+        # Check if existing ducked video exists
+        ducked_video_path = os.path.join(job_dir, f"clip_{clip_idx}_ducked.mp4")
+        if os.path.exists(ducked_video_path):
+            effective_video_path = ducked_video_path
+
+    # 4. Re-render video
     final_filename = f"shorts_{clip_idx}_{job_id}.mp4"
     final_path = os.path.join(job_dir, final_filename)
 
-    clip_meta = {'title': f"Clip #{clip_idx}", 'hook': settings.get('custom_banner_text', '')}
+    clip_meta = {'title': f"Clip #{clip_idx}", 'hook': new_banner_text}
     if job_id in JOB_STORE and 'clips' in JOB_STORE[job_id]:
         for c in JOB_STORE[job_id]['clips']:
             if c['index'] == clip_idx:
+                c['banner_text'] = new_banner_text
                 clip_meta = c
                 break
 
     try:
         render_subtitles_on_video(
-            input_video_path=raw_clip_path,
+            input_video_path=effective_video_path,
             timeline=new_timeline,
             output_video_path=final_path,
             clip_meta=clip_meta,
-            settings=settings
+            settings={**settings, 'custom_banner_text': new_banner_text}
         )
+
+        # 5. Re-generate Thumbnail
+        thumb_filename = f"thumb_{clip_idx}_{job_id}.png"
+        thumb_path = os.path.join(job_dir, thumb_filename)
+        first_sub = new_timeline[0]['text'] if new_timeline else ""
+        generate_clip_thumbnail(
+            video_path=final_path,
+            output_png_path=thumb_path,
+            banner_text=new_banner_text,
+            subtitle_text=first_sub,
+            settings=settings,
+            capture_sec=0.5
+        )
+
     except Exception as e:
         return jsonify({'error': f'Re-render failed: {e}'}), 500
 
+    ts = int(time.time())
     return jsonify({
         'status': 'success',
-        'video_url': f"/api/outputs/{job_id}/{final_filename}?t={int(time.time())}",
-        'srt_url': f"/api/outputs/{job_id}/{srt_filename}?t={int(time.time())}"
+        'video_url': f"/api/outputs/{job_id}/{final_filename}?t={ts}",
+        'thumbnail_url': f"/api/outputs/{job_id}/{thumb_filename}?t={ts}",
+        'srt_url': f"/api/outputs/{job_id}/{srt_filename}?t={ts}"
     })
 
 
@@ -346,7 +438,7 @@ def download_zip(job_id):
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(job_dir):
             for file in files:
-                if file.startswith('shorts_') or file.endswith('.srt'):
+                if file.startswith('shorts_') or file.endswith('.srt') or file.startswith('thumb_'):
                     zipf.write(os.path.join(root, file), file)
 
     return send_file(zip_path, as_attachment=True, download_name=f"Shorts_{job_id}.zip")

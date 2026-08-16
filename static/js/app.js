@@ -1,5 +1,6 @@
 /**
- * Shorts Movie Maker — Frontend Controller with In-App Subtitle Editor
+ * Shorts Movie Maker — Frontend Controller with In-App Subtitle & Banner Editor,
+ * Style-BERT-VITS2 Voiceover, and High-CTR 9:16 Thumbnails
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,8 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const cropModeSelect = document.getElementById('cropMode');
   const targetDurationSelect = document.getElementById('targetDuration');
   const maxClipsSelect = document.getElementById('maxClips');
+  const ttsEngineSelect = document.getElementById('ttsEngine');
+  const bannerStyleSelect = document.getElementById('bannerStyle');
   const whisperModelSelect = document.getElementById('whisperModel');
-  const languageSelect = document.getElementById('language');
   const showSubtitlesCheckbox = document.getElementById('showSubtitles');
   const showHeaderBannerCheckbox = document.getElementById('showHeaderBanner');
   const customBannerTextInput = document.getElementById('customBannerText');
@@ -38,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modal Elements
   const subEditorModal = document.getElementById('subEditorModal');
   const modalClipTitle = document.getElementById('modalClipTitle');
+  const modalBannerInput = document.getElementById('modalBannerInput');
+  const modalRegenTts = document.getElementById('modalRegenTts');
   const timelineRowsContainer = document.getElementById('timelineRowsContainer');
   const addRowBtn = document.getElementById('addRowBtn');
   const closeModalBtn = document.getElementById('closeModalBtn');
@@ -163,13 +167,29 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('shorts_maker_gemini_key', apiKey);
     }
 
+    // Parse TTS selection
+    const ttsVal = ttsEngineSelect.value;
+    let ttsEngine = 'off';
+    let ttsModel = '';
+    let ttsEnabled = false;
+
+    if (ttsVal !== 'off') {
+      ttsEnabled = true;
+      const parts = ttsVal.split(':');
+      ttsEngine = parts[0];
+      ttsModel = parts.slice(1).join(':');
+    }
+
     const settings = {
       gemini_api_key: apiKey,
       custom_topic: customTopicInput.value.trim(),
       target_duration: parseFloat(targetDurationSelect.value),
       max_clips: parseInt(maxClipsSelect.value, 10),
+      tts_enabled: ttsEnabled,
+      tts_engine: ttsEngine,
+      tts_model: ttsModel,
+      banner_style: bannerStyleSelect.value,
       whisper_model: whisperModelSelect.value,
-      language: languageSelect.value,
       crop_mode: cropModeSelect.value,
       show_subtitles: showSubtitlesCheckbox.checked,
       show_header_banner: showHeaderBannerCheckbox.checked,
@@ -262,20 +282,29 @@ document.addEventListener('DOMContentLoaded', () => {
       card.id = `clipCard_${c.index}`;
 
       card.innerHTML = `
-        <div class="clip-video-wrap">
-          <video controls preload="metadata" playsinline id="videoElem_${c.index}">
-            <source src="${c.video_url}" type="video/mp4">
-            お使いのブラウザは動画タグに対応していません。
-          </video>
-          <span class="clip-duration-badge">${c.duration}s</span>
+        <div class="clip-media-tabs">
+          <div class="clip-video-wrap">
+            <video controls preload="metadata" playsinline id="videoElem_${c.index}">
+              <source src="${c.video_url}" type="video/mp4">
+              お使いのブラウザは動画タグに対応していません。
+            </video>
+            <span class="clip-duration-badge">${c.duration}s</span>
+          </div>
+          ${c.thumbnail_url ? `
+            <div class="clip-thumb-preview-wrap">
+              <img src="${c.thumbnail_url}" alt="9:16 サムネイル" class="clip-thumb-img" id="thumbImg_${c.index}">
+              <span class="thumb-badge">9:16 サムネイル</span>
+            </div>
+          ` : ''}
         </div>
         <div class="clip-body">
-          <h4 class="clip-title">${escapeHtml(c.title)}</h4>
-          ${c.hook ? `<p class="clip-hook">💡 ${escapeHtml(c.hook)}</p>` : ''}
+          <h4 class="clip-title" id="cardTitle_${c.index}">${escapeHtml(c.title)}</h4>
+          ${c.banner_text ? `<p class="clip-hook" id="cardHook_${c.index}">💡 ${escapeHtml(c.banner_text)}</p>` : ''}
           ${c.summary ? `<p class="clip-summary">${escapeHtml(c.summary)}</p>` : ''}
           <div class="clip-actions">
-            <button type="button" class="btn-edit-sub" onclick="openSubtitleEditor('${jobId}', ${c.index}, '${escapeHtml(c.title)}')">✏️ 字幕編集</button>
+            <button type="button" class="btn-edit-sub" onclick="openSubtitleEditor('${jobId}', ${c.index})">✏️ 字幕＆バナー編集</button>
             <a href="${c.video_url}" download="${c.filename}" class="btn-clip-dl" id="dlBtn_${c.index}">⬇ 動画</a>
+            ${c.thumbnail_url ? `<a href="${c.thumbnail_url}" download="${c.thumb_filename || `thumb_${c.index}.png`}" class="btn-clip-thumb" id="thumbBtn_${c.index}">🖼️ サムネ</a>` : ''}
             <a href="${c.srt_url}" download="clip_${c.index}.srt" class="btn-clip-srt" id="srtBtn_${c.index}">SRT</a>
           </div>
         </div>
@@ -285,12 +314,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 6. In-App Subtitle Editor Modal
-  window.openSubtitleEditor = async function(jobId, clipIdx, title) {
+  // 6. In-App Subtitle & Banner Editor Modal
+  window.openSubtitleEditor = async function(jobId, clipIdx) {
     editingJobId = jobId;
     editingClipIdx = clipIdx;
-    modalClipTitle.textContent = `クリップ #${clipIdx} — 字幕（テロップ）編集`;
+    modalClipTitle.textContent = `クリップ #${clipIdx} — 字幕＆バナー編集`;
     timelineRowsContainer.innerHTML = '<p class="text-muted">字幕データを読み込み中...</p>';
+    modalBannerInput.value = '';
     subEditorModal.classList.remove('hidden');
 
     try {
@@ -298,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!resp.ok) throw new Error('字幕データの取得に失敗しました');
 
       const data = await resp.json();
+      modalBannerInput.value = data.banner_text || '';
       renderTimelineRows(data.timeline || []);
     } catch (e) {
       alert(`エラー: ${e.message}`);
@@ -312,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    timeline.forEach((item, idx) => {
+    timeline.forEach((item) => {
       addTimelineRowElement(item.start, item.end, item.text);
     });
   }
@@ -336,7 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   addRowBtn.addEventListener('click', () => {
-    // Determine start time based on last row
     const rows = timelineRowsContainer.querySelectorAll('.sub-edit-row');
     let lastEnd = 0.0;
     if (rows.length > 0) {
@@ -355,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
   closeModalBtn.addEventListener('click', closeModal);
   cancelModalBtn.addEventListener('click', closeModal);
 
-  // Save & Re-render
+  // Save & Re-render (Banner + Voiceover + Subtitles + Thumbnail)
   saveAndRerenderBtn.addEventListener('click', async () => {
     if (!editingJobId || !editingClipIdx) return;
 
@@ -376,18 +406,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Sort by start time
     newTimeline.sort((a, b) => a.start - b.start);
 
+    const updatedBannerText = modalBannerInput.value.trim();
+    const regenTts = modalRegenTts.checked;
+
     saveAndRerenderBtn.disabled = true;
-    reRenderBtnText.textContent = '⏳ 再レンダリング中 (数秒)...';
+    reRenderBtnText.textContent = '⏳ 再レンダリング中 (動画+音声+サムネ)...';
 
     try {
       const resp = await fetch(`/api/clips/re-render/${editingJobId}/${editingClipIdx}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          timeline: newTimeline
+          timeline: newTimeline,
+          banner_text: updatedBannerText,
+          regenerate_tts: regenTts
         })
       });
 
@@ -398,25 +432,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await resp.json();
 
-      // Update video element source immediately
+      // Update elements immediately
       const videoElem = document.getElementById(`videoElem_${editingClipIdx}`);
+      const thumbImg = document.getElementById(`thumbImg_${editingClipIdx}`);
       const dlBtn = document.getElementById(`dlBtn_${editingClipIdx}`);
+      const thumbBtn = document.getElementById(`thumbBtn_${editingClipIdx}`);
       const srtBtn = document.getElementById(`srtBtn_${editingClipIdx}`);
+      const cardHook = document.getElementById(`cardHook_${editingClipIdx}`);
 
       if (videoElem) {
         videoElem.src = data.video_url;
         videoElem.load();
       }
+      if (thumbImg && data.thumbnail_url) {
+        thumbImg.src = data.thumbnail_url;
+      }
       if (dlBtn) dlBtn.href = data.video_url;
+      if (thumbBtn && data.thumbnail_url) thumbBtn.href = data.thumbnail_url;
       if (srtBtn) srtBtn.href = data.srt_url;
+      if (cardHook && updatedBannerText) {
+        cardHook.textContent = `💡 ${updatedBannerText}`;
+      }
 
       closeModal();
-      alert(`クリップ #${editingClipIdx} の字幕を再反映しました！🎉`);
+      alert(`クリップ #${editingClipIdx} の動画・音声・サムネイルを再反映しました！🎉`);
     } catch (e) {
       alert(`エラー: ${e.message}`);
     } finally {
       saveAndRerenderBtn.disabled = false;
-      reRenderBtnText.textContent = '🔄 修正して動画に再反映 (即時)';
+      reRenderBtnText.textContent = '🔄 修正して動画＆サムネに再反映 (即時)';
     }
   });
 

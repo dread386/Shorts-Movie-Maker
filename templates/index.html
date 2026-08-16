@@ -17,11 +17,11 @@
         <span class="logo-icon">🎬</span>
         <div class="logo-text">
           <h1>Shorts Movie Maker</h1>
-          <p class="subtitle">AI ハイライト検出 × 縦型自動クロップ × テロップ字幕生成</p>
+          <p class="subtitle">AI ハイライト検出 × 音声フック読み上げ × 9:16サムネ自動生成</p>
         </div>
       </div>
       <div class="header-badges">
-        <span class="badge badge-ai">Gemini AI / Whisper</span>
+        <span class="badge badge-ai">Style-BERT-VITS2 / edge-tts</span>
         <span class="badge badge-local">Local Fast Engine</span>
       </div>
     </header>
@@ -73,7 +73,7 @@
           <!-- Gemini API Key -->
           <div class="form-group full-width">
             <label for="geminiApiKey">
-              Gemini API キー <span class="tag-optional">(空欄時は「APIキーリスト.txt」の3つのキーを自動ローテーション使用)</span>
+              Gemini API キー <span class="tag-optional">(空欄時はローカルAPIキー自動使用)</span>
             </label>
             <input type="password" id="geminiApiKey" placeholder="個別のAPIキーを指定したい場合のみ入力（通常は空欄でOKです）">
           </div>
@@ -83,7 +83,7 @@
             <label for="customTopic">
               動画のテーマ / 補足情報 <span class="tag-optional">(任意: AIのハイライト精度が向上します)</span>
             </label>
-            <input type="text" id="customTopic" placeholder="例: Weezer Buddy Holly ギター演奏 / ギターソロ / ゲーム実況の山場">
+            <input type="text" id="customTopic" placeholder="例: NIRVANA Blew ギターソロ / アウト感あるソロ / ギター演奏">
           </div>
 
           <!-- Crop Mode -->
@@ -121,6 +121,34 @@
             </select>
           </div>
 
+          <!-- TTS Voiceover Setting -->
+          <div class="form-group">
+            <label for="ttsEngine">🎙️ 冒頭タイトル読み上げ (音声フック)</label>
+            <select id="ttsEngine">
+              <optgroup label="Style-BERT-VITS2 (ローカルAI音声)">
+                {% for m in tts_info.sbv2_models %}
+                <option value="sbv2:{{ m }}" {% if m == 'my_voice' %}selected{% endif %}>Style-BERT-VITS2 ({{ m }}{% if m == 'my_voice' %} / 自分の声{% endif %})</option>
+                {% endfor %}
+              </optgroup>
+              <optgroup label="edge-tts (高品質クラウド音声)">
+                {% for key, val in tts_info.edge_voices.items() %}
+                <option value="edge_tts:{{ key }}">{{ val }}</option>
+                {% endfor %}
+              </optgroup>
+              <option value="off">なし (音声を重ねない)</option>
+            </select>
+          </div>
+
+          <!-- Banner & Thumbnail Style -->
+          <div class="form-group">
+            <label for="bannerStyle">🎨 バナー・サムネイル配色</label>
+            <select id="bannerStyle">
+              <option value="yellow_black" selected>黄帯 × 黒背景 (高CTR・YouTube推奨)</option>
+              <option value="red_black">赤帯 × 黒背景 (緊急・インパクト重視)</option>
+              <option value="simple_black">シンプル白枠 × 黒背景</option>
+            </select>
+          </div>
+
           <!-- Whisper Model -->
           <div class="form-group">
             <label for="whisperModel">文字起こし精度 (Whisper)</label>
@@ -128,15 +156,6 @@
               <option value="base" selected>base (高速・軽量・キャッシュ済)</option>
               <option value="small">small (バランス・キャッシュ済)</option>
               <option value="medium">medium (高精度・キャッシュ済)</option>
-            </select>
-          </div>
-
-          <!-- Language -->
-          <div class="form-group">
-            <label for="language">音声言語</label>
-            <select id="language">
-              <option value="ja" selected>日本語 (Japanese)</option>
-              <option value="en">英語 (English)</option>
             </select>
           </div>
 
@@ -167,7 +186,7 @@
             <label for="customBannerText">
               上部バナーの固定テキスト <span class="tag-optional">(任意: 空欄の場合はAIが自動命名)</span>
             </label>
-            <input type="text" id="customBannerText" placeholder="例: 激ムズギターソロ弾いてみた / 今日のハイライト">
+            <input type="text" id="customBannerText" placeholder="例: この外れまくったソロ はじめて聴いた時 えっ！！って思った">
           </div>
 
           <!-- Subtitle Font -->
@@ -194,7 +213,7 @@
         <div class="action-area">
           <button type="button" class="btn-primary" id="startBtn" disabled>
             <span class="btn-icon">🚀</span>
-            <span class="btn-text-main">ショート動画を自動生成</span>
+            <span class="btn-text-main">ショート動画 ＆ サムネを一括生成</span>
           </button>
         </div>
       </section>
@@ -219,9 +238,9 @@
         <!-- Result Clips Area -->
         <div class="results-area hidden" id="resultsArea">
           <div class="results-header">
-            <h3>🎉 生成完了ショート動画一覧</h3>
+            <h3>🎉 生成完了ショート動画＆サムネイル一覧</h3>
             <a href="#" class="btn-zip-download" id="zipDownloadBtn">
-              <span>📦</span> すべて一括ダウンロード (ZIP)
+              <span>📦</span> すべて一括ダウンロード (動画+サムネ+SRT ZIP)
             </a>
           </div>
 
@@ -232,19 +251,32 @@
       </section>
     </main>
 
-    <!-- Subtitle Editor Modal -->
+    <!-- Subtitle & Banner Editor Modal -->
     <div class="modal-overlay hidden" id="subEditorModal">
       <div class="modal-card">
         <div class="modal-header">
           <div class="modal-title-area">
             <span class="modal-icon">✏️</span>
-            <h3 id="modalClipTitle">字幕（テロップ）編集</h3>
+            <h3 id="modalClipTitle">動画・テロップ・バナー編集</h3>
           </div>
           <button type="button" class="btn-modal-close" id="closeModalBtn">✕</button>
         </div>
 
         <div class="modal-body">
-          <p class="modal-hint">誤字や聞き間違いを修正してください。「動画に再反映」を押すと数秒で字幕が再焼き込みされます。</p>
+          <!-- Banner Edit Section -->
+          <div class="modal-banner-section">
+            <label class="modal-section-label" for="modalBannerInput">💡 上部見出しバナー（フック文）</label>
+            <textarea id="modalBannerInput" rows="2" class="modal-banner-textarea" placeholder="上部に表示するタイトルフック文（Enterで改行可能）"></textarea>
+            <label class="checkbox-label" style="margin-top: 8px; font-size: 0.85rem;">
+              <input type="checkbox" id="modalRegenTts" checked>
+              <span>🎙️ この文言で冒頭ナレーション（声）も再生成してダッキング合成する</span>
+            </label>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <label class="modal-section-label">📝 字幕（テロップ）タイムライン</label>
+          <p class="modal-hint">誤字や聞き間違いを修正してください。「動画に再反映」を押すと数秒で字幕・バナー・サムネイルが即時更新されます。</p>
           
           <div class="timeline-rows-container" id="timelineRowsContainer">
             <!-- Dynamically populated rows -->
@@ -258,7 +290,7 @@
         <div class="modal-footer">
           <button type="button" class="btn-cancel" id="cancelModalBtn">キャンセル</button>
           <button type="button" class="btn-primary" id="saveAndRerenderBtn">
-            <span id="reRenderBtnText">🔄 修正して動画に再反映 (即時)</span>
+            <span id="reRenderBtnText">🔄 修正して動画＆サムネに再反映 (即時)</span>
           </button>
         </div>
       </div>

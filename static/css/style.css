@@ -729,3 +729,105 @@ input:focus, select:focus {
   background: rgba(99, 102, 241, 0.3);
   color: #fff;
 }
+
+/* Thumbnail and Media layout */
+.clip-media-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: #000;
+  padding: 10px;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.clip-thumb-preview-wrap {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #050508;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 9 / 16;
+}
+
+.clip-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #FBBF24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.btn-clip-thumb {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FCD34D;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.btn-clip-thumb:hover {
+  background: rgba(245, 158, 11, 0.3);
+  color: #FFF;
+}
+
+/* Modal Banner Editor */
+.modal-banner-section {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--bg-card-border);
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.modal-section-label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #E2E8F0;
+  margin-bottom: 8px;
+}
+
+.modal-banner-textarea {
+  width: 100%;
+  background: #0B0E14;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #F3F4F6;
+  font-family: var(--font-base);
+  font-size: 0.95rem;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.modal-banner-textarea:focus {
+  outline: none;
+  border-color: #818CF8;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.modal-section-divider {
+  height: 1px;
+  background: var(--bg-card-border);
+  margin: 16px 0;
+}
+
