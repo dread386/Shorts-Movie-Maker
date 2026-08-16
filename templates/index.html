@@ -7,8 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=1.2.1">
+  <link rel="stylesheet" href="/static/css/style.css?v=1.2.2">
 </head>
+
 
 
 <body>
@@ -110,20 +111,27 @@
                 <p class="grid-control-hint">横動画（16:9）を8区画に定義し、縦動画（9:16）の各スロットに自由に配置できます。</p>
               </div>
 
-              <!-- Visual 8-Grid Map Preview -->
-              <div class="grid-visual-map">
-                <div class="grid-map-label-top">【元動画 16:9 グリッドマップ】</div>
-                <div class="grid-map-cells">
-                  <div class="grid-cell" data-cell="A"><span class="cell-tag">A</span><span class="cell-desc">左手上</span></div>
-                  <div class="grid-cell" data-cell="B"><span class="cell-tag">B</span><span class="cell-desc">中左上</span></div>
-                  <div class="grid-cell" data-cell="C"><span class="cell-tag">C</span><span class="cell-desc">中右上・顔</span></div>
-                  <div class="grid-cell" data-cell="D"><span class="cell-tag">D</span><span class="cell-desc">右上</span></div>
-                  <div class="grid-cell" data-cell="E"><span class="cell-tag">E</span><span class="cell-desc">左手下</span></div>
-                  <div class="grid-cell" data-cell="F"><span class="cell-tag">F</span><span class="cell-desc">ピッキング</span></div>
-                  <div class="grid-cell" data-cell="G"><span class="cell-tag">G</span><span class="cell-desc">ボディ/アンプ</span></div>
-                  <div class="grid-cell" data-cell="H"><span class="cell-tag">H</span><span class="cell-desc">右下</span></div>
+              <!-- Visual 8-Grid Map Preview with Live Frame Background -->
+              <div class="grid-visual-map-wrap">
+                <div class="grid-map-label-top">📷 アップロード動画の実写フレーム ＆ 8区画（A〜H）マップ</div>
+                <div class="grid-visual-map">
+                  <img id="gridPreviewImg" class="grid-preview-bg" alt="動画フレーム" src="">
+                  <div class="grid-preview-placeholder" id="gridPreviewPlaceholder">
+                    <span>📹 動画をアップロードするとここに実際の映像フレームと区画が表示されます</span>
+                  </div>
+                  <div class="grid-map-cells">
+                    <div class="grid-cell" data-cell="A" title="A: 左手上"><span class="cell-tag">A</span><span class="cell-desc">左手上</span></div>
+                    <div class="grid-cell" data-cell="B" title="B: 中央左上"><span class="cell-tag">B</span><span class="cell-desc">中左上</span></div>
+                    <div class="grid-cell" data-cell="C" title="C: 中央右上・顔"><span class="cell-tag">C</span><span class="cell-desc">顔・中右上</span></div>
+                    <div class="grid-cell" data-cell="D" title="D: 右上"><span class="cell-tag">D</span><span class="cell-desc">右上</span></div>
+                    <div class="grid-cell" data-cell="E" title="E: 左手下"><span class="cell-tag">E</span><span class="cell-desc">左手下</span></div>
+                    <div class="grid-cell" data-cell="F" title="F: ピッキング手元"><span class="cell-tag">F</span><span class="cell-desc">ピッキング</span></div>
+                    <div class="grid-cell" data-cell="G" title="G: ボディ/アンプ"><span class="cell-tag">G</span><span class="cell-desc">ギター/アンプ</span></div>
+                    <div class="grid-cell" data-cell="H" title="H: 右下"><span class="cell-tag">H</span><span class="cell-desc">右下</span></div>
+                  </div>
                 </div>
               </div>
+
 
               <div class="grid-options-grid">
                 <!-- Layout Selection -->
@@ -400,8 +408,9 @@
     </footer>
   </div>
 
-  <script src="/static/js/app.js?v=1.2.1"></script>
+  <script src="/static/js/app.js?v=1.2.2"></script>
 </body>
 </html>
+
 
 

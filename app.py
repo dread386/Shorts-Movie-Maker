@@ -55,6 +55,15 @@ def get_tts_status():
 
 
 
+@app.route('/api/preview/<job_id>')
+def serve_preview(job_id):
+    preview_filename = f"preview_{job_id}.jpg"
+    preview_path = os.path.join(UPLOAD_DIR, preview_filename)
+    if os.path.exists(preview_path):
+        return send_file(preview_path, mimetype='image/jpeg')
+    return jsonify({'error': 'Preview not found'}), 404
+
+
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -79,11 +88,33 @@ def upload_file():
     except Exception as e:
         info = {'duration': 60.0, 'width': 1920, 'height': 1080, 'fps': 30.0}
 
+    # Extract representative preview frame at 1.0s
+    preview_filename = f"preview_{job_id}.jpg"
+    preview_path = os.path.join(UPLOAD_DIR, preview_filename)
+    preview_url = ""
+    try:
+        cmd = [
+            'ffmpeg', '-y',
+            '-ss', '1.0',
+            '-i', video_path,
+            '-vframes', '1',
+            '-s', '1280x720',
+            '-q:v', '3',
+            preview_path
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        if os.path.exists(preview_path):
+            preview_url = f"/api/preview/{job_id}"
+    except Exception as e:
+        print(f"[Preview Extract Error] {e}")
+
     return jsonify({
         'job_id': job_id,
         'filename': saved_filename,
+        'preview_image_url': preview_url,
         'video_info': info
     })
+
 
 
 def _process_video_job(job_id: str, video_path: str, settings: dict):

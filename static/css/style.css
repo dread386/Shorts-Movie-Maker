@@ -865,22 +865,52 @@ input:focus, select:focus {
   margin-bottom: 4px;
 }
 
-.grid-control-hint {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  margin-bottom: 16px;
+.grid-visual-map-wrap {
+  margin-bottom: 18px;
 }
 
 .grid-visual-map {
+  position: relative;
   background: #05070D;
-  border: 1px solid var(--bg-card-border);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  margin-bottom: 16px;
+  border: 2px solid rgba(99, 102, 241, 0.4);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.grid-preview-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.grid-preview-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 20px;
+  text-align: center;
+  background: rgba(11, 14, 20, 0.85);
+  z-index: 1;
 }
 
 .grid-map-label-top {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: #818CF8;
   font-weight: 700;
   margin-bottom: 8px;
@@ -888,26 +918,54 @@ input:focus, select:focus {
 }
 
 .grid-map-cells {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  grid-template-rows: repeat(2, 1fr);
+  gap: 0;
+  z-index: 2;
 }
 
 .grid-cell {
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  padding: 8px 4px;
-  text-align: center;
+  border: 1px solid rgba(255, 230, 0, 0.4);
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(0.5px);
 }
 
 .grid-cell:hover {
-  border-color: #818CF8;
+  background: rgba(255, 230, 0, 0.25);
+  border-color: #FFE600;
+  box-shadow: inset 0 0 16px rgba(255, 230, 0, 0.4);
+}
+
+.cell-tag {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #FFE600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.cell-desc {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #FFF;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.65);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+
   background: rgba(99, 102, 241, 0.15);
 }
 

@@ -19,8 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const gridSettingsPanel = document.getElementById('gridSettingsPanel');
   const gridLayoutSelect = document.getElementById('gridLayoutSelect');
   const gridSlotsContainer = document.getElementById('gridSlotsContainer');
+  const gridPreviewImg = document.getElementById('gridPreviewImg');
+  const gridPreviewPlaceholder = document.getElementById('gridPreviewPlaceholder');
 
   const targetDurationSelect = document.getElementById('targetDuration');
+
   const maxClipsSelect = document.getElementById('maxClips');
   const ttsEngineSelect = document.getElementById('ttsEngine');
   const bannerFontSizeSelect = document.getElementById('bannerFontSize');
@@ -163,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pollInterval = null;
   let editingJobId = null;
   let editingClipIdx = null;
+  let lastFocusedSlotIdx = 0;
 
   // Grid Mode Toggle & Slot Rendering
   cropModeSelect.addEventListener('change', () => {
@@ -219,10 +223,37 @@ document.addEventListener('DOMContentLoaded', () => {
         </select>
       `;
 
+      const selElem = slotDiv.querySelector('.slot-select');
+      selElem.addEventListener('focus', () => {
+        lastFocusedSlotIdx = i;
+      });
+
       gridSlotsContainer.appendChild(slotDiv);
     }
   }
 
+  // Interactive clicking on visual grid cells to assign to currently focused slot
+  document.querySelectorAll('.grid-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const cellKey = cell.getAttribute('data-cell');
+      const allSlotSelects = document.querySelectorAll('#gridSlotsContainer .slot-select');
+      if (allSlotSelects.length > 0) {
+        const targetSel = allSlotSelects[lastFocusedSlotIdx] || allSlotSelects[0];
+        targetSel.value = cellKey;
+        
+        // Visual feedback
+        cell.style.borderColor = '#38BDF8';
+        cell.style.background = 'rgba(56, 189, 248, 0.4)';
+        setTimeout(() => {
+          cell.style.borderColor = '';
+          cell.style.background = '';
+        }, 300);
+
+        // Move to next slot
+        lastFocusedSlotIdx = (lastFocusedSlotIdx + 1) % allSlotSelects.length;
+      }
+    });
+  });
 
   // Presets
   document.querySelectorAll('.btn-preset').forEach(btn => {
@@ -288,6 +319,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.value = '';
     videoInfoBar.classList.add('hidden');
     dropzone.classList.remove('hidden');
+    gridPreviewImg.src = '';
+    gridPreviewPlaceholder.classList.remove('hidden');
     startBtn.disabled = true;
   }
 
@@ -324,12 +357,19 @@ document.addEventListener('DOMContentLoaded', () => {
       displayFilename.textContent = file.name;
       displaySpecs.textContent = `長さ: ${durStr} | 解像度: ${data.video_info.width}x${data.video_info.height} | ${data.video_info.fps}fps`;
 
+      // Set live preview frame background
+      if (data.preview_image_url) {
+        gridPreviewImg.src = `${data.preview_image_url}?t=${Date.now()}`;
+        gridPreviewPlaceholder.classList.add('hidden');
+      }
+
       startBtn.disabled = false;
     } catch (e) {
       alert(`エラー: ${e.message}`);
       resetUpload();
     }
   }
+
 
   // Helper to parse TTS value
   function parseTtsValue(val) {
