@@ -123,14 +123,16 @@
 
           <!-- TTS Voiceover Setting -->
           <div class="form-group">
-            <label for="ttsEngine">🎙️ 冒頭タイトル読み上げ (音声フック)</label>
+            <label for="ttsEngine">
+              🎙️ 冒頭タイトル読み上げ (音声フック) <span class="tag-optional">(Style-BERT-VITS2未起動時は自動で高音質音声にフォールバック)</span>
+            </label>
             <select id="ttsEngine">
               <optgroup label="Style-BERT-VITS2 (ローカルAI音声)">
                 {% for m in tts_info.sbv2_models %}
                 <option value="sbv2:{{ m }}" {% if m == 'my_voice' %}selected{% endif %}>Style-BERT-VITS2 ({{ m }}{% if m == 'my_voice' %} / 自分の声{% endif %})</option>
                 {% endfor %}
               </optgroup>
-              <optgroup label="edge-tts (高品質クラウド音声)">
+              <optgroup label="edge-tts (高品質クラウド音声・確実高速)">
                 {% for key, val in tts_info.edge_voices.items() %}
                 <option value="edge_tts:{{ key }}">{{ val }}</option>
                 {% endfor %}
