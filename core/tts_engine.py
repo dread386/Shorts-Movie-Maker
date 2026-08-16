@@ -2,8 +2,8 @@
 tts_engine.py
 -------------
 Robust Text-to-Speech Engine for Shorts Movie Maker.
-Supports Style-BERT-VITS2 (local API) and edge-tts (cloud fallback),
-and performs fail-safe audio ducking with FFmpeg.
+Supports Style-BERT-VITS2 (local API) and edge-tts (cloud),
+with gender-matched fallbacks, status checking, and fail-safe audio ducking.
 """
 
 import os
@@ -17,17 +17,32 @@ SBV2_DIR = "/Volumes/DTM/applications/Style-BERT-VITS2"
 SBV2_PORTS = [5000, 5001, 7860, 8000]
 
 EDGE_TTS_VOICES = {
-    'ja-JP-NanamiNeural': 'Nanami (女性・自然で聴きやすい・推奨)',
+    'ja-JP-NanamiNeural': 'Nanami (女性・自然で聴きやすい)',
     'ja-JP-KeitaNeural':  'Keita (男性・親しみやすい)',
     'ja-JP-NaokiNeural':  'Naoki (男性・落ち着いたアナウンス)',
     'ja-JP-AoiNeural':    'Aoi (女性・明るいトーン)',
     'ja-JP-DaichiNeural': 'Daichi (男性・力強い)'
 }
 
+# Mapping SBV2 models to appropriate fallback voices
+MALE_SBV2_MODELS = {'my_voice', 'jvnv-M1-jp', 'Ueda_Kanpei', 'Tobu_Yunomaru', 'Sakura_Tokujiro'}
+
+
+def check_sbv2_status() -> dict:
+    """Check if Style-BERT-VITS2 API server is running"""
+    for port in SBV2_PORTS:
+        try:
+            r = requests.get(f"http://127.0.0.1:{port}/models/info", timeout=0.3)
+            if r.status_code == 200:
+                return {'online': True, 'port': port, 'models': r.json()}
+        except Exception:
+            pass
+    return {'online': False, 'port': None, 'models': []}
+
 
 def get_available_tts_models() -> dict:
     """
-    Returns available Style-BERT-VITS2 models and edge-tts voices.
+    Returns available Style-BERT-VITS2 models, edge-tts voices, and current SBV2 server status.
     """
     sbv2_models = []
     assets_dir = os.path.join(SBV2_DIR, "model_assets")
@@ -41,8 +56,12 @@ def get_available_tts_models() -> dict:
         sbv2_models.remove('my_voice')
         sbv2_models.insert(0, 'my_voice')
 
+    status = check_sbv2_status()
+
     return {
         'sbv2_available': len(sbv2_models) > 0,
+        'sbv2_online': status['online'],
+        'sbv2_port': status['port'],
         'sbv2_models': sbv2_models,
         'edge_voices': EDGE_TTS_VOICES
     }
@@ -71,7 +90,6 @@ def generate_edge_tts_audio(text: str, output_wav: str, voice: str = "ja-JP-Nana
         asyncio.run(_run())
     except Exception as e:
         print(f"[edge-tts error] {e}")
-        # Secondary fallback with Nanami
         async def _run_fallback():
             communicate = edge_tts.Communicate(cleaned, 'ja-JP-NanamiNeural', rate='+10%')
             await communicate.save(temp_mp3)
@@ -94,28 +112,18 @@ def generate_edge_tts_audio(text: str, output_wav: str, voice: str = "ja-JP-Nana
     return output_wav
 
 
-def _find_active_sbv2_port() -> int | None:
-    """Check common Style-BERT-VITS2 ports"""
-    for port in SBV2_PORTS:
-        try:
-            r = requests.get(f"http://127.0.0.1:{port}/models/info", timeout=0.3)
-            if r.status_code == 200:
-                return port
-        except Exception:
-            pass
-    return None
-
-
 def generate_sbv2_audio(text: str, output_wav: str, model_name: str = "my_voice") -> str:
     """
-    Generate speech audio via Style-BERT-VITS2 server if active, or instantly fallback to edge-tts.
+    Generate speech audio via Style-BERT-VITS2 server if active,
+    or seamlessly fallback to gender-matched edge-tts voice.
     """
     cleaned = text.replace('\n', ' ').strip()
     if not cleaned:
         return ""
 
-    port = _find_active_sbv2_port()
-    if port:
+    status = check_sbv2_status()
+    if status['online']:
+        port = status['port']
         try:
             url = f"http://127.0.0.1:{port}/voice"
             params = {
@@ -132,9 +140,25 @@ def generate_sbv2_audio(text: str, output_wav: str, model_name: str = "my_voice"
         except Exception as e:
             print(f"[SBV2 API Request failed] {e}")
 
-    # If SBV2 server is not running, seamlessly generate with edge-tts without lag
-    print("🎙️ [TTS] Style-BERT-VITS2 server offline -> Seamlessly using edge-tts (Nanami)")
-    return generate_edge_tts_audio(cleaned, output_wav, voice="ja-JP-NanamiNeural")
+    # Fallback with gender matching
+    fallback_voice = 'ja-JP-KeitaNeural' if model_name in MALE_SBV2_MODELS else 'ja-JP-NanamiNeural'
+    print(f"🎙️ [TTS Fallback] SBV2 offline -> Using {fallback_voice} for model '{model_name}'")
+    return generate_edge_tts_audio(cleaned, output_wav, voice=fallback_voice)
+
+
+def generate_voiceover(text: str, output_wav: str, tts_engine: str = 'sbv2', tts_model: str = 'my_voice') -> str:
+    """
+    Unified voiceover synthesis dispatcher based on engine and model selection.
+    """
+    if tts_engine == 'off' or not text:
+        return ""
+
+    if tts_engine == 'sbv2':
+        return generate_sbv2_audio(text, output_wav, model_name=tts_model)
+    elif tts_engine == 'edge_tts':
+        return generate_edge_tts_audio(text, output_wav, voice=tts_model)
+    else:
+        return generate_edge_tts_audio(text, output_wav, voice="ja-JP-NanamiNeural")
 
 
 def _has_audio_stream(video_path: str) -> bool:
@@ -166,7 +190,6 @@ def overlay_voice_with_ducking(video_path: str,
         shutil.copy2(video_path, output_video_path)
         return output_video_path
 
-    # Check if input video has an audio stream
     has_audio = _has_audio_stream(video_path)
 
     # Get voiceover duration
@@ -185,7 +208,6 @@ def overlay_voice_with_ducking(video_path: str,
     duck_end = voice_lead_in + voice_dur + 0.35
 
     if has_audio:
-        # Mix original audio with ducking + voiceover
         filter_complex = (
             f"[1:a]adelay={int(voice_lead_in * 1000)}|{int(voice_lead_in * 1000)},volume=1.4[delayed_voice];"
             f"[0:a]volume=eval=frame:volume='if(lte(t,{duck_end}), {duck_volume} + (1.0 - {duck_volume}) * max(0, (t - {voice_dur + voice_lead_in}) / 0.35), 1.0)'[ducked_bgm];"
@@ -205,7 +227,6 @@ def overlay_voice_with_ducking(video_path: str,
             output_video_path
         ]
     else:
-        # No audio in original video -> directly use voiceover as audio track
         cmd = [
             'ffmpeg', '-y',
             '-i', video_path,
@@ -220,7 +241,6 @@ def overlay_voice_with_ducking(video_path: str,
 
     res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     if res.returncode != 0:
-        # Fallback simple amix
         simple_cmd = [
             'ffmpeg', '-y',
             '-i', video_path,

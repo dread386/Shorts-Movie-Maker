@@ -22,7 +22,7 @@ from core.highlight_detector import detect_highlights_gemini
 from core.video_splitter import extract_vertical_clip
 from core.vad_sync import get_clip_timeline, export_srt
 from core.video_gen import render_subtitles_on_video, generate_clip_thumbnail, FONT_CATALOGUE
-from core.tts_engine import get_available_tts_models, generate_sbv2_audio, generate_edge_tts_audio, overlay_voice_with_ducking
+from core.tts_engine import get_available_tts_models, generate_voiceover, overlay_voice_with_ducking, check_sbv2_status
 
 
 app = Flask(__name__)
@@ -40,6 +40,12 @@ JOB_STORE = {}
 def index():
     tts_info = get_available_tts_models()
     return render_template('index.html', fonts=FONT_CATALOGUE, tts_info=tts_info)
+
+
+@app.route('/api/tts_status')
+def get_tts_status():
+    return jsonify(get_available_tts_models())
+
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -160,20 +166,17 @@ def _process_video_job(job_id: str, video_path: str, settings: dict):
             # Optional: Synthesize Voiceover Hook & Ducking
             effective_video_path = raw_clip_path
             if tts_enabled and tts_engine_choice != 'off' and banner_text:
-                update_progress(clip_progress_base + clip_progress_step * 0.2, f"ナレーション音声を合成中 #{clip_idx}...")
+                update_progress(clip_progress_base + clip_progress_step * 0.2, f"ナレーション音声を合成中 #{clip_idx} ({tts_model or tts_engine_choice})...")
                 voice_wav_path = os.path.join(job_out_dir, f"voice_{clip_idx}.wav")
                 try:
-                    if tts_engine_choice == 'sbv2':
-                        generate_sbv2_audio(banner_text, voice_wav_path, model_name=tts_model)
-                    else:
-                        generate_edge_tts_audio(banner_text, voice_wav_path, voice=tts_model)
-
+                    generate_voiceover(banner_text, voice_wav_path, tts_engine=tts_engine_choice, tts_model=tts_model)
                     if os.path.exists(voice_wav_path) and os.path.getsize(voice_wav_path) > 100:
                         ducked_video_path = os.path.join(job_out_dir, f"clip_{clip_idx}_ducked.mp4")
                         overlay_voice_with_ducking(raw_clip_path, voice_wav_path, ducked_video_path)
                         effective_video_path = ducked_video_path
                 except Exception as e:
                     print(f"[TTS Synthesis Error] {e}")
+
 
             # Get clip subtitle timeline
             clip_timeline = get_clip_timeline(timeline, start_s, end_s)
@@ -351,17 +354,14 @@ def re_render_clip(job_id, clip_idx):
 
     # 3. Optional: Regenerate Voiceover if requested
     effective_video_path = raw_clip_path
-    tts_engine_choice = settings.get('tts_engine', 'sbv2')
-    tts_model = settings.get('tts_model', 'my_voice')
+    tts_engine_choice = data.get('tts_engine') or settings.get('tts_engine', 'sbv2')
+    tts_model = data.get('tts_model') or settings.get('tts_model', 'my_voice')
+    banner_font_size = int(data.get('banner_font_size') or settings.get('banner_font_size', 50))
 
     if regenerate_tts and new_banner_text and tts_engine_choice != 'off':
         voice_wav_path = os.path.join(job_dir, f"voice_{clip_idx}.wav")
         try:
-            if tts_engine_choice == 'sbv2':
-                generate_sbv2_audio(new_banner_text, voice_wav_path, model_name=tts_model)
-            else:
-                generate_edge_tts_audio(new_banner_text, voice_wav_path, voice=tts_model)
-
+            generate_voiceover(new_banner_text, voice_wav_path, tts_engine=tts_engine_choice, tts_model=tts_model)
             if os.path.exists(voice_wav_path) and os.path.getsize(voice_wav_path) > 100:
                 ducked_video_path = os.path.join(job_dir, f"clip_{clip_idx}_ducked.mp4")
                 overlay_voice_with_ducking(raw_clip_path, voice_wav_path, ducked_video_path)
@@ -378,6 +378,14 @@ def re_render_clip(job_id, clip_idx):
     final_filename = f"shorts_{clip_idx}_{job_id}.mp4"
     final_path = os.path.join(job_dir, final_filename)
 
+    merged_settings = {
+        **settings,
+        'custom_banner_text': new_banner_text,
+        'banner_font_size': banner_font_size,
+        'tts_engine': tts_engine_choice,
+        'tts_model': tts_model
+    }
+
     clip_meta = {'title': f"Clip #{clip_idx}", 'hook': new_banner_text}
     if job_id in JOB_STORE and 'clips' in JOB_STORE[job_id]:
         for c in JOB_STORE[job_id]['clips']:
@@ -392,7 +400,7 @@ def re_render_clip(job_id, clip_idx):
             timeline=new_timeline,
             output_video_path=final_path,
             clip_meta=clip_meta,
-            settings={**settings, 'custom_banner_text': new_banner_text}
+            settings=merged_settings
         )
 
         # 5. Re-generate Thumbnail
@@ -404,9 +412,10 @@ def re_render_clip(job_id, clip_idx):
             output_png_path=thumb_path,
             banner_text=new_banner_text,
             subtitle_text=first_sub,
-            settings=settings,
+            settings=merged_settings,
             capture_sec=0.5
         )
+
 
     except Exception as e:
         return jsonify({'error': f'Re-render failed: {e}'}), 500

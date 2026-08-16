@@ -57,8 +57,10 @@ DEFAULT_SETTINGS = {
     'show_subtitles': True,
     'show_header_banner': True,
     'custom_banner_text': '',
-    'banner_style': 'yellow_black' # 'yellow_black' | 'red_black' | 'simple_black'
+    'banner_style': 'yellow_black', # 'yellow_black' | 'red_black' | 'simple_black'
+    'banner_font_size': 50 # 64 (xlarge), 56 (large), 50 (medium / standard), 42 (small)
 }
+
 
 
 def _parse_color(hex_str: str) -> tuple:
@@ -367,9 +369,10 @@ def render_subtitles_on_video(input_video_path: str,
                     cx=cx,
                     top_margin=t_margin,
                     font_key=s['font_key'],
-                    base_font_size=int(s['font_size'] * 0.75),
+                    base_font_size=int(s.get('banner_font_size', 50)),
                     banner_style=banner_style
                 )
+
 
             # 2. Render Subtitles matching current timestamp t
             if show_subtitles and split_timeline:
@@ -465,9 +468,10 @@ def generate_clip_thumbnail(video_path: str,
             cx=cx,
             top_margin=t_margin,
             font_key=font_key,
-            base_font_size=56,
+            base_font_size=int(s.get('banner_font_size', 50)),
             banner_style=banner_style
         )
+
 
     # 3. If subtitle text is given, render a punchy bottom text
     if subtitle_text:

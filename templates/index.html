@@ -21,8 +21,9 @@
         </div>
       </div>
       <div class="header-badges">
-        <span class="badge badge-ai">Style-BERT-VITS2 / edge-tts</span>
-        <span class="badge badge-local">Local Fast Engine</span>
+        <span class="badge {% if tts_info.sbv2_online %}badge-ai{% else %}badge-local{% endif %}" id="sbv2Badge">
+          Style-BERT-VITS2: {% if tts_info.sbv2_online %}🟢 起動中 (Port {{ tts_info.sbv2_port }}){% else %}⚪ 未起動 (edge-tts併用){% endif %}
+        </span>
       </div>
     </header>
 
@@ -124,7 +125,7 @@
           <!-- TTS Voiceover Setting -->
           <div class="form-group">
             <label for="ttsEngine">
-              🎙️ 冒頭タイトル読み上げ (音声フック) <span class="tag-optional">(Style-BERT-VITS2未起動時は自動で高音質音声にフォールバック)</span>
+              🎙️ 冒頭タイトル読み上げ (音声フック)
             </label>
             <select id="ttsEngine">
               <optgroup label="Style-BERT-VITS2 (ローカルAI音声)">
@@ -138,6 +139,17 @@
                 {% endfor %}
               </optgroup>
               <option value="off">なし (音声を重ねない)</option>
+            </select>
+          </div>
+
+          <!-- Banner Font Size -->
+          <div class="form-group">
+            <label for="bannerFontSize">📏 タイトル文字サイズ</label>
+            <select id="bannerFontSize">
+              <option value="64">特大 (64px / 1行で圧倒的インパクト)</option>
+              <option value="56">大 (56px / 短文向け)</option>
+              <option value="50" selected>中 (50px / ★黄金推奨・2行バズ構文に最適)</option>
+              <option value="42">小 (42px / 3行や解説向け)</option>
             </select>
           </div>
 
@@ -269,16 +281,45 @@
           <div class="modal-banner-section">
             <label class="modal-section-label" for="modalBannerInput">💡 上部見出しバナー（フック文）</label>
             <textarea id="modalBannerInput" rows="2" class="modal-banner-textarea" placeholder="上部に表示するタイトルフック文（Enterで改行可能）"></textarea>
-            <label class="checkbox-label" style="margin-top: 8px; font-size: 0.85rem;">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+              <div>
+                <label class="modal-section-label" for="modalBannerFontSize" style="font-size: 0.82rem;">📏 タイトル文字サイズ</label>
+                <select id="modalBannerFontSize" class="modal-select">
+                  <option value="64">特大 (64px)</option>
+                  <option value="56">大 (56px)</option>
+                  <option value="50" selected>中 (50px / 推奨)</option>
+                  <option value="42">小 (42px)</option>
+                </select>
+              </div>
+              <div>
+                <label class="modal-section-label" for="modalTtsEngine" style="font-size: 0.82rem;">🎙️ ナレーション音声（声）</label>
+                <select id="modalTtsEngine" class="modal-select">
+                  <optgroup label="Style-BERT-VITS2 (ローカルAI音声)">
+                    {% for m in tts_info.sbv2_models %}
+                    <option value="sbv2:{{ m }}">Style-BERT-VITS2 ({{ m }})</option>
+                    {% endfor %}
+                  </optgroup>
+                  <optgroup label="edge-tts (高品質クラウド音声)">
+                    {% for key, val in tts_info.edge_voices.items() %}
+                    <option value="edge_tts:{{ key }}">{{ val }}</option>
+                    {% endfor %}
+                  </optgroup>
+                  <option value="off">なし (音声を重ねない)</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="checkbox-label" style="margin-top: 12px; font-size: 0.85rem;">
               <input type="checkbox" id="modalRegenTts" checked>
-              <span>🎙️ この文言で冒頭ナレーション（声）も再生成してダッキング合成する</span>
+              <span>🎙️ この文言・声で冒頭ナレーションを再生成してダッキング合成する</span>
             </label>
           </div>
 
           <div class="modal-section-divider"></div>
 
           <label class="modal-section-label">📝 字幕（テロップ）タイムライン</label>
-          <p class="modal-hint">誤字や聞き間違いを修正してください。「動画に再反映」を押すと数秒で字幕・バナー・サムネイルが即時更新されます。</p>
+          <p class="modal-hint">誤字や聞き間違いを修正してください。「動画＆サムネに再反映」を押すと数秒で字幕・バナー・サムネイルが即時更新されます。</p>
           
           <div class="timeline-rows-container" id="timelineRowsContainer">
             <!-- Dynamically populated rows -->

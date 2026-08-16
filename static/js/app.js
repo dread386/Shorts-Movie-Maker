@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const targetDurationSelect = document.getElementById('targetDuration');
   const maxClipsSelect = document.getElementById('maxClips');
   const ttsEngineSelect = document.getElementById('ttsEngine');
+  const bannerFontSizeSelect = document.getElementById('bannerFontSize');
   const bannerStyleSelect = document.getElementById('bannerStyle');
   const whisperModelSelect = document.getElementById('whisperModel');
   const showSubtitlesCheckbox = document.getElementById('showSubtitles');
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const customBannerTextInput = document.getElementById('customBannerText');
   const fontKeySelect = document.getElementById('fontKey');
   const displayModeSelect = document.getElementById('displayMode');
+  const sbv2Badge = document.getElementById('sbv2Badge');
 
   const startBtn = document.getElementById('startBtn');
   const stepProgress = document.getElementById('stepProgress');
@@ -41,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const subEditorModal = document.getElementById('subEditorModal');
   const modalClipTitle = document.getElementById('modalClipTitle');
   const modalBannerInput = document.getElementById('modalBannerInput');
+  const modalBannerFontSize = document.getElementById('modalBannerFontSize');
+  const modalTtsEngine = document.getElementById('modalTtsEngine');
   const modalRegenTts = document.getElementById('modalRegenTts');
   const timelineRowsContainer = document.getElementById('timelineRowsContainer');
   const addRowBtn = document.getElementById('addRowBtn');
@@ -48,6 +52,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const cancelModalBtn = document.getElementById('cancelModalBtn');
   const saveAndRerenderBtn = document.getElementById('saveAndRerenderBtn');
   const reRenderBtnText = document.getElementById('reRenderBtnText');
+
+  // Check SBV2 status on load and periodically
+  checkTtsStatus();
+  setInterval(checkTtsStatus, 10000);
+
+  async function checkTtsStatus() {
+    try {
+      const res = await fetch('/api/tts_status');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.sbv2_online) {
+        sbv2Badge.className = 'badge badge-ai';
+        sbv2Badge.textContent = `Style-BERT-VITS2: 🟢 起動中 (Port ${data.sbv2_port})`;
+      } else {
+        sbv2Badge.className = 'badge badge-local';
+        sbv2Badge.textContent = 'Style-BERT-VITS2: ⚪ 未起動 (edge-tts併用)';
+      }
+    } catch (e) {}
+  }
 
   // Load saved API Key from localStorage
   const savedApiKey = localStorage.getItem('shorts_maker_gemini_key');
@@ -158,6 +181,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Helper to parse TTS value
+  function parseTtsValue(val) {
+    if (!val || val === 'off') {
+      return { ttsEngine: 'off', ttsModel: '', ttsEnabled: false };
+    }
+    const parts = val.split(':');
+    return {
+      ttsEngine: parts[0],
+      ttsModel: parts.slice(1).join(':'),
+      ttsEnabled: true
+    };
+  }
+
   // 3. Start Processing
   startBtn.addEventListener('click', async () => {
     if (!currentJobId || !currentFilename) return;
@@ -167,18 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('shorts_maker_gemini_key', apiKey);
     }
 
-    // Parse TTS selection
-    const ttsVal = ttsEngineSelect.value;
-    let ttsEngine = 'off';
-    let ttsModel = '';
-    let ttsEnabled = false;
-
-    if (ttsVal !== 'off') {
-      ttsEnabled = true;
-      const parts = ttsVal.split(':');
-      ttsEngine = parts[0];
-      ttsModel = parts.slice(1).join(':');
-    }
+    const { ttsEngine, ttsModel, ttsEnabled } = parseTtsValue(ttsEngineSelect.value);
 
     const settings = {
       gemini_api_key: apiKey,
@@ -188,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tts_enabled: ttsEnabled,
       tts_engine: ttsEngine,
       tts_model: ttsModel,
+      banner_font_size: parseInt(bannerFontSizeSelect.value, 10),
       banner_style: bannerStyleSelect.value,
       whisper_model: whisperModelSelect.value,
       crop_mode: cropModeSelect.value,
@@ -321,6 +347,10 @@ document.addEventListener('DOMContentLoaded', () => {
     modalClipTitle.textContent = `クリップ #${clipIdx} — 字幕＆バナー編集`;
     timelineRowsContainer.innerHTML = '<p class="text-muted">字幕データを読み込み中...</p>';
     modalBannerInput.value = '';
+    
+    // Sync current UI values into modal
+    modalBannerFontSize.value = bannerFontSizeSelect.value || "50";
+    modalTtsEngine.value = ttsEngineSelect.value || "sbv2:my_voice";
     subEditorModal.classList.remove('hidden');
 
     try {
@@ -410,6 +440,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updatedBannerText = modalBannerInput.value.trim();
     const regenTts = modalRegenTts.checked;
+    const { ttsEngine, ttsModel } = parseTtsValue(modalTtsEngine.value);
+    const bannerFontSize = parseInt(modalBannerFontSize.value, 10) || 50;
 
     saveAndRerenderBtn.disabled = true;
     reRenderBtnText.textContent = '⏳ 再レンダリング中 (動画+音声+サムネ)...';
@@ -421,6 +453,9 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           timeline: newTimeline,
           banner_text: updatedBannerText,
+          banner_font_size: bannerFontSize,
+          tts_engine: ttsEngine,
+          tts_model: ttsModel,
           regenerate_tts: regenTts
         })
       });
