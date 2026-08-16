@@ -58,7 +58,7 @@ DEFAULT_SETTINGS = {
     'show_header_banner': True,
     'custom_banner_text': '',
     'banner_style': 'yellow_black', # 'yellow_black' | 'red_black' | 'simple_black'
-    'banner_font_size': 50 # 64 (xlarge), 56 (large), 50 (medium / standard), 42 (small)
+    'banner_font_size': 76 # 84 (huge), 76 (xlarge / gold standard), 68 (large), 58 (medium)
 }
 
 
@@ -100,11 +100,10 @@ def _wrap_banner_text(text: str, font_key: str, base_font_size: int, max_width: 
     raw_lines = text.strip().split('\n')
     current_size = base_font_size
 
-    # Try sizes down to 32px until text fits well
-    while current_size >= 32:
+    # Try sizes down to 42px until text fits well
+    while current_size >= 42:
         font = _load_font(font_key, current_size)
         wrapped_lines = []
-        fits_all = True
 
         for raw_line in raw_lines:
             raw_line = raw_line.strip()
@@ -132,7 +131,7 @@ def _wrap_banner_text(text: str, font_key: str, base_font_size: int, max_width: 
             if curr:
                 wrapped_lines.append(curr)
 
-        # Max 3 lines for banner header
+        # Max 2-3 lines for banner header
         if len(wrapped_lines) <= 3:
             return wrapped_lines, font
 
@@ -148,14 +147,16 @@ def _draw_smart_banner(draw: ImageDraw.ImageDraw,
                        cx: int,
                        top_margin: int,
                        font_key: str = 'ja_kaku',
-                       base_font_size: int = 50,
+                       base_font_size: int = 76,
                        banner_style: str = 'yellow_black'):
     """
     Renders multi-line, auto-scaled high-impact hook banner at top of frame.
+    Wide plate (980-1020px) with extra bold text designed specifically for mobile screens.
     """
     if not banner_text:
         return
 
+    # Maximum text width inside banner box
     lines, font = _wrap_banner_text(banner_text, font_key, base_font_size, max_width=920)
     if not lines:
         return
@@ -168,37 +169,37 @@ def _draw_smart_banner(draw: ImageDraw.ImageDraw,
         line_heights.append(bb[3] - bb[1])
 
     max_w = max(line_widths)
-    line_spacing = int(font.size * 0.22)
+    line_spacing = int(font.size * 0.18)
     total_text_h = sum(line_heights) + line_spacing * max(0, len(lines) - 1)
 
-    pad_x = 36
-    pad_y = 22
-    bw = max_w + pad_x * 2
+    pad_y = 26
+    # Keep plate wide (at least 960px, up to 1020px) so it fills mobile screen width boldly
+    bw = max(960, min(1020, max_w + 70))
     bh = total_text_h + pad_y * 2
     bx = cx - bw // 2
     by = top_margin
 
     # Style definitions
     if banner_style == 'red_black':
-        bg_color = (15, 15, 20, 220)
-        border_color = (255, 60, 60, 255)
+        bg_color = (10, 10, 15, 235)
+        border_color = (255, 50, 50, 255)
         text_color = (255, 255, 255, 255)
-        border_w = 4
+        border_w = 6
     elif banner_style == 'simple_black':
-        bg_color = (0, 0, 0, 200)
-        border_color = (255, 255, 255, 180)
-        text_color = (255, 255, 255, 255)
-        border_w = 2
-    else: # yellow_black (Classic YouTube Hook / Blew style)
-        bg_color = (10, 10, 15, 225)
-        border_color = (255, 220, 0, 255)
+        bg_color = (0, 0, 0, 220)
+        border_color = (255, 255, 255, 220)
         text_color = (255, 255, 255, 255)
         border_w = 4
+    else: # yellow_black (Classic YouTube Hook / High CTR style)
+        bg_color = (8, 8, 12, 235)
+        border_color = (255, 225, 0, 255)
+        text_color = (255, 255, 255, 255)
+        border_w = 6
 
-    # Outer subtle shadow
-    draw.rounded_rectangle([bx + 4, by + 4, bx + bw + 4, by + bh + 4], radius=20, fill=(0, 0, 0, 120))
+    # Drop shadow
+    draw.rounded_rectangle([bx + 6, by + 6, bx + bw + 6, by + bh + 6], radius=24, fill=(0, 0, 0, 150))
     # Main badge box
-    draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=20, fill=bg_color, outline=border_color, width=border_w)
+    draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=24, fill=bg_color, outline=border_color, width=border_w)
 
     # Render lines centered
     curr_y = by + pad_y
@@ -208,13 +209,14 @@ def _draw_smart_banner(draw: ImageDraw.ImageDraw,
         lh = bb[3] - bb[1]
         lx = cx - lw // 2
         
-        # Slight text outline for maximum legibility
-        for dx in (-2, 0, 2):
-            for dy in (-2, 0, 2):
+        # Heavy text outline for maximum legibility against background
+        for dx in (-3, -2, 0, 2, 3):
+            for dy in (-3, -2, 0, 2, 3):
                 if dx != 0 or dy != 0:
-                    draw.text((lx + dx, curr_y + dy), line, font=font, fill=(0, 0, 0, 220))
+                    draw.text((lx + dx, curr_y + dy), line, font=font, fill=(0, 0, 0, 240))
         draw.text((lx, curr_y), line, font=font, fill=text_color)
         curr_y += lh + line_spacing
+
 
 
 def _draw_outlined_text(draw, text, font, cx, y, text_rgba, outline_rgba, outline_w, font_weight=2):

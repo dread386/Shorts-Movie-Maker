@@ -668,9 +668,10 @@ document.addEventListener('DOMContentLoaded', () => {
     modalBannerInput.value = '';
     
     // Sync current UI values into modal
-    modalBannerFontSize.value = bannerFontSizeSelect.value || "50";
-    modalTtsEngine.value = ttsEngineSelect.value || "sbv2:my_voice";
+    modalBannerFontSize.value = bannerFontSizeSelect.value || "76";
+    modalTtsEngine.value = ttsEngineSelect.value || "edge_tts:ja-JP-KeitaNeural";
     subEditorModal.classList.remove('hidden');
+
 
     try {
       const resp = await fetch(`/api/clips/timeline/${jobId}/${clipIdx}`);
@@ -760,9 +761,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const updatedBannerText = modalBannerInput.value.trim();
     const regenTts = modalRegenTts.checked;
     const { ttsEngine, ttsModel } = parseTtsValue(modalTtsEngine.value);
-    const bannerFontSize = parseInt(modalBannerFontSize.value, 10) || 50;
+    const bannerFontSize = parseInt(modalBannerFontSize.value, 10) || 76;
 
     saveAndRerenderBtn.disabled = true;
+
     reRenderBtnText.textContent = '⏳ 再レンダリング中 (動画+音声+サムネ)...';
 
     try {

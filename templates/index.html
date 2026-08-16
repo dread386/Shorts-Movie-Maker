@@ -7,8 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=1.2.6">
+  <link rel="stylesheet" href="/static/css/style.css?v=1.2.7">
 </head>
+
 
 
 
@@ -218,14 +219,15 @@
 
           <!-- Banner Font Size -->
           <div class="form-group">
-            <label for="bannerFontSize">📏 タイトル文字サイズ</label>
+            <label for="bannerFontSize">📏 タイトル文字サイズ (スマホ最適化)</label>
             <select id="bannerFontSize">
-              <option value="64">特大 (64px / 1行で圧倒的インパクト)</option>
-              <option value="56">大 (56px / 短文向け)</option>
-              <option value="50" selected>中 (50px / ★黄金推奨・2行バズ構文に最適)</option>
-              <option value="42">小 (42px / 3行や解説向け)</option>
+              <option value="84">超特大 (84px / ★スマホで一番目立つバズ黄金サイズ)</option>
+              <option value="76" selected>特大 (76px / ★推奨・2行フックが超ド迫力)</option>
+              <option value="68">大 (68px / 短文・3行向け)</option>
+              <option value="58">中 (58px / 解説や長文向け)</option>
             </select>
           </div>
+
 
           <!-- Banner & Thumbnail Style -->
           <div class="form-group">
@@ -360,11 +362,12 @@
               <div>
                 <label class="modal-section-label" for="modalBannerFontSize" style="font-size: 0.82rem;">📏 タイトル文字サイズ</label>
                 <select id="modalBannerFontSize" class="modal-select">
-                  <option value="64">特大 (64px)</option>
-                  <option value="56">大 (56px)</option>
-                  <option value="50" selected>中 (50px / 推奨)</option>
-                  <option value="42">小 (42px)</option>
+                  <option value="84">超特大 (84px / バズ黄金サイズ)</option>
+                  <option value="76" selected>特大 (76px / 推奨)</option>
+                  <option value="68">大 (68px)</option>
+                  <option value="58">中 (58px)</option>
                 </select>
+
               </div>
               <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -422,9 +425,10 @@
     </footer>
   </div>
 
-  <script src="/static/js/app.js?v=1.2.6"></script>
+  <script src="/static/js/app.js?v=1.2.7"></script>
 </body>
 </html>
+
 
 
 
